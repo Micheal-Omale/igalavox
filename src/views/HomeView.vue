@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import HeritageDivider from '../components/HeritageDivider.vue'
 import NameCard from '../components/NameCard.vue'
@@ -9,8 +10,17 @@ import attahAudio from '../assets/audio/Attah.m4a'
 import enefolaAudio from '../assets/audio/Enefola.m4a'
 import ojonugwaAudio from '../assets/audio/Ojonugwa.m4a'
 
+const router = useRouter()
 const heroImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCGx09habYTALPdHDiFHdU0l6gN2luQiGRsJkKbDuODFYu37RxVryvzdCyiHJ-GQ_SVo4JIzRw5BrIFI8Fng1u-F0pZinjBSmOw568fCbu4OqD6HPgs_ZmFUGhK0EOrWbLXQIzx9bl1aTSPtHipKFOKaASj7AAtpojuPe0l1JsH_A1bwnehMXb5HWTg6ZAS0SYmKLVa0J1OUZshoRP2qSrYEq2QIBtX34qcsB3JAeaMt1NyCZtJQk3Wbw92FLAv25na3JpuWhWtG-B'
 const selectedName = ref(null)
+const searchQuery = ref('')
+
+const handleSearch = () => {
+  router.push({
+    path: '/names',
+    query: { q: searchQuery.value }
+  })
+}
 
 const featuredNames = [
   {
@@ -91,7 +101,7 @@ const genderOptions = [
           Explore a rich digital archive of cultural lineage. Understand the profound meanings and hear authentic native pronunciations of Igala names.
         </p>
 
-        <SearchPanel />
+        <SearchPanel v-model="searchQuery" @search="handleSearch" />
 
         <div class="mt-6 flex flex-col justify-center gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-4">
           <AppButton to="/names" class="w-full justify-center sm:w-auto">Explore Names</AppButton>

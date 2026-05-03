@@ -4,9 +4,8 @@ import BrandLogo from './BrandLogo.vue'
 const currentYear = new Date().getFullYear()
 
 const links = [
-  { label: 'About Project', to: '/about' },
+  { label: 'Archive', to: '/names' },
   { label: 'About', to: '/about' },
-  { label: 'History', to: '/history' },
   { label: 'Privacy', to: '/privacy' },
 ]
 </script>

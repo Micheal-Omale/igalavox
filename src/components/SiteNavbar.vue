@@ -1,16 +1,28 @@
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppButton from './AppButton.vue'
 import BrandLogo from './BrandLogo.vue'
 
+const router = useRouter()
 const isMobileMenuOpen = ref(false)
+const searchQuery = ref('')
 
 const links = [
   { label: 'Home', to: '/' },
+  { label: 'Archive', to: '/names' },
   { label: 'About', to: '/about' },
-  { label: 'History', to: '/history' },
   { label: 'Submit', to: '/signup' },
 ]
+
+const handleSearch = () => {
+  if (!searchQuery.value.trim()) return
+  router.push({
+    path: '/names',
+    query: { q: searchQuery.value }
+  })
+  isMobileMenuOpen.value = false
+}
 
 const closeMobileMenu = () => {
   isMobileMenuOpen.value = false
@@ -35,14 +47,15 @@ const closeMobileMenu = () => {
       </nav>
 
       <div class="hidden items-center gap-4 md:flex">
-        <label class="relative block">
+        <form @submit.prevent="handleSearch" class="relative block">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input
+            v-model="searchQuery"
             class="w-56 rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
             placeholder="Search names..."
             type="search"
           />
-        </label>
+        </form>
         <AppButton to="/signin" variant="ghost">Sign in</AppButton>
       </div>
 
@@ -81,14 +94,15 @@ const closeMobileMenu = () => {
           {{ link.label }}
         </RouterLink>
 
-        <label class="relative mt-2 block">
+        <form @submit.prevent="handleSearch" class="relative mt-2 block">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input
+            v-model="searchQuery"
             class="w-full rounded-full border border-outline-variant bg-surface-container-low py-3 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
             placeholder="Search names..."
             type="search"
           />
-        </label>
+        </form>
       </nav>
     </div>
   </header>
