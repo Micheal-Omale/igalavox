@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Sign In - Igala Heritage</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Serif:ital,wght@0,100..900;1,100..900&amp;family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Material Symbols -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Design System Configuration -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#ffdcc6",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#f6f3ee",
+                        "on-surface": "#1c1c19",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e5e2dd",
+                        "on-tertiary-fixed": "#241a00",
+                        "tertiary-container": "#cba72f",
+                        "surface-container-high": "#ebe8e3",
+                        "on-secondary-container": "#795338",
+                        "on-primary-fixed-variant": "#214f3f",
+                        "surface-bright": "#fcf9f4",
+                        "primary-fixed-dim": "#a0d1bc",
+                        "inverse-primary": "#a0d1bc",
+                        "surface-variant": "#e5e2dd",
+                        "outline": "#717974",
+                        "on-tertiary-fixed-variant": "#574500",
+                        "surface": "#fcf9f4",
+                        "on-secondary-fixed": "#2f1502",
+                        "surface-dim": "#dcdad5",
+                        "tertiary-fixed-dim": "#e9c349",
+                        "inverse-surface": "#31302d",
+                        "secondary": "#7c563b",
+                        "on-surface-variant": "#414944",
+                        "background": "#fcf9f4",
+                        "on-secondary-fixed-variant": "#623f25",
+                        "secondary-fixed-dim": "#efbc9b",
+                        "outline-variant": "#c0c8c3",
+                        "on-primary-fixed": "#002116",
+                        "on-background": "#1c1c19",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#79a894",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#fecaa8",
+                        "primary-fixed": "#bcedd7",
+                        "primary": "#00261b",
+                        "surface-tint": "#396756",
+                        "surface-container": "#f0ede9",
+                        "primary-container": "#0b3d2e",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-container": "#4e3d00",
+                        "inverse-on-surface": "#f3f0eb",
+                        "tertiary": "#735c00",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#ffe088"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "0.5rem",
+                        "margin": "2rem",
+                        "lg": "2rem",
+                        "gutter": "1.5rem",
+                        "xs": "0.25rem",
+                        "base": "8px",
+                        "xl": "4rem",
+                        "md": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "display": ["Noto Serif"],
+                        "caption": ["Plus Jakarta Sans"],
+                        "headline-md": ["Noto Serif"],
+                        "headline-lg": ["Noto Serif"],
+                        "body-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "caption": ["12px", { "lineHeight": "1.4", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body
+    class="bg-background text-on-background min-h-screen antialiased flex selection:bg-tertiary-container/30 selection:text-on-background">
+    <!-- Split Screen Layout -->
+    <main class="flex w-full min-h-screen">
+        <!-- Left Visual Side (Hidden on Mobile) -->
+        <section class="hidden lg:flex relative w-1/2 bg-surface-container-high overflow-hidden">
+            <div class="absolute inset-0 z-0">
+                <img alt="Cultural texture" class="w-full h-full object-cover"
+                    data-alt="A high-resolution, digital artistry version of a traditional African mask integrated into a sophisticated, abstract background with forest green and gold accents."
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBs9rs6AkcWOP-F0tR30ZWIm9Gkp2QQBYEBjfsDnNx5XtV51GJUC3pYwCuCybpoGGLSwb1kTH8c0Rgl0HZLumjFilPpy5m_2e8IP7-RI8Qnn-RHzz605Q_VL8u7sMwsnN10kdoNbrnMMEHPFtx9Rm4OGkEnbU4f-cnidZx5Y89iKrZmoSuHOSmDQHEKICHmFAyBH8EVzZXU97Imzgkc8HSSJATm4JogxhGAjtVXcdn7HhGMF9PxwKpq4BGS3yOS8z6rKqJQ6t7zs3hK" />
+                <!-- Subtle overlay to ensure the mood matches the brand -->
+                <div class="absolute inset-0 bg-primary/40 mix-blend-multiply"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-primary/80 to-transparent"></div>
+            </div>
+            <!-- Optional floating brand text or quote over image to add premium feel -->
+            <div class="relative z-10 mt-auto p-16 text-on-primary">
+                <blockquote class="font-headline-lg text-headline-lg max-w-lg mb-6">
+                    "Preserving the roots of our lineage for the branches of tomorrow."
+                </blockquote>
+                <div class="w-12 h-[1px] bg-tertiary-fixed opacity-60"></div>
+            </div>
+        </section>
+        <!-- Right Form Side -->
+        <section class="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 relative">
+            <!-- Subtle noise texture overlay for organic feel on the form side -->
+            <div class="absolute inset-0 opacity-[0.02] pointer-events-none"
+                style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');">
+            </div>
+            <div class="w-full max-w-[420px] relative z-10 space-y-10">
+                <!-- Header -->
+                <header class="space-y-3">
+                    <h1 class="font-display text-display text-primary">Igala Heritage</h1>
+                    <p class="font-body-lg text-body-lg text-on-surface-variant">Welcome back. Please enter your details
+                        to access your family archives.</p>
+                </header>
+                <!-- Form -->
+                <form action="#" class="space-y-6" method="POST">
+                    <!-- Email Field -->
+                    <div class="space-y-2">
+                        <label class="block font-label-md text-label-md text-on-surface" for="email">Email
+                            Address</label>
+                        <div class="relative">
+                            <input
+                                class="block w-full bg-surface-container-low border border-surface-dim rounded px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-tertiary-container focus:border-tertiary-container transition-all"
+                                id="email" name="email" placeholder="ilebaye@example.com" required="" type="email" />
+                        </div>
+                    </div>
+                    <!-- Password Field -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between items-center">
+                            <label class="block font-label-md text-label-md text-on-surface"
+                                for="password">Password</label>
+                            <a class="font-caption text-caption text-secondary hover:text-primary transition-colors focus:outline-none focus:underline"
+                                href="#">Forgot Password?</a>
+                        </div>
+                        <div class="relative">
+                            <input
+                                class="block w-full bg-surface-container-low border border-surface-dim rounded px-4 py-3 font-body-md text-body-md text-on-surface placeholder:text-outline-variant focus:outline-none focus:ring-1 focus:ring-tertiary-container focus:border-tertiary-container transition-all"
+                                id="password" name="password" placeholder="••••••••" required="" type="password" />
+                        </div>
+                    </div>
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button
+                            class="w-full flex justify-center items-center py-4 px-6 bg-primary text-on-primary rounded font-label-md text-label-md shadow-sm hover:bg-primary-container transition-all active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary focus:ring-offset-background"
+                            type="submit">
+                            Sign In
+                        </button>
+                    </div>
+                </form>
+                <!-- Footer Sign Up Prompt -->
+                <div class="pt-6 border-t border-surface-dim text-center">
+                    <p class="font-body-md text-body-md text-on-surface-variant">
+                        Don't have an account?
+                        <a class="font-label-md text-label-md text-secondary hover:text-primary transition-colors focus:outline-none focus:underline ml-1"
+                            href="#">Sign Up</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>
