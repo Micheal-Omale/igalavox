@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { supabase } from '../services/supabase'
 import HeritageDivider from '../components/HeritageDivider.vue'
@@ -14,12 +14,15 @@ const selectedName = ref(null)
 
 const names = ref([])
 const isLoading = ref(true)
+const isLoadingMore = ref(false)
 const isDetailLoading = ref(false)
-const visibleCount = ref(60)
+const hasMoreNames = ref(false)
+let searchTimer = null
 
-const SUMMARY_CACHE_KEY = 'names-view-summary-cache-v1'
+const SUMMARY_CACHE_KEY = 'names-view-summary-cache-v2'
 const SUMMARY_CACHE_TTL_MS = 5 * 60 * 1000
 const SUMMARY_SELECT = 'id, name, meaning, tags, gender, audio_id, audio_url, audio_files(file_url, file_name), updated_at'
+const PAGE_SIZE = 60
 
 const dedupeByName = (rows) => {
   const byName = new Map()
@@ -62,42 +65,58 @@ const writeSummaryCache = (rows) => {
   }))
 }
 
-const filteredNames = computed(() => {
-  if (!searchQuery.value) return names.value
-  const q = searchQuery.value.toLowerCase()
-  return names.value.filter(n => 
-    n.name.toLowerCase().includes(q) || 
-    n.meaning.toLowerCase().includes(q) ||
-    (n.tags && n.tags.some(t => t.toLowerCase().includes(q)))
-  )
-})
+const visibleNames = computed(() => names.value)
 
-const visibleNames = computed(() => filteredNames.value.slice(0, visibleCount.value))
-const hasMoreNames = computed(() => visibleNames.value.length < filteredNames.value.length)
+const buildNamesQuery = (from, to) => {
+  const q = searchQuery.value.trim()
+  let query = supabase
+    .from('names')
+    .select(SUMMARY_SELECT)
+    .order('name', { ascending: true })
+    .range(from, to)
 
-const fetchNames = async () => {
-  isLoading.value = true
+  if (q) {
+    const escaped = q.replace(/[%_,]/g, '\\$&')
+    query = query.or(`name.ilike.%${escaped}%,meaning.ilike.%${escaped}%`)
+  }
+
+  return query
+}
+
+const fetchNames = async ({ reset = true } = {}) => {
+  if (reset) isLoading.value = true
+  else isLoadingMore.value = true
+
   try {
-    const cachedRows = readSummaryCache()
+    const cachedRows = reset && !searchQuery.value.trim() ? readSummaryCache() : null
     if (cachedRows) {
       names.value = cachedRows.map(normalizeNameRecord)
+      hasMoreNames.value = cachedRows.length === PAGE_SIZE
       isLoading.value = false
       return
     }
 
-    const { data, error } = await supabase
-      .from('names')
-      .select(SUMMARY_SELECT)
-      .order('name', { ascending: true })
+    const from = reset ? 0 : names.value.length
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await buildNamesQuery(from, to)
 
     if (error) throw error
     const dedupedRows = dedupeByName(data || [])
-    writeSummaryCache(dedupedRows)
-    names.value = dedupedRows.map(normalizeNameRecord)
+    const normalizedRows = dedupedRows.map(normalizeNameRecord)
+
+    if (reset) {
+      if (!searchQuery.value.trim()) writeSummaryCache(dedupedRows)
+      names.value = normalizedRows
+    } else {
+      names.value = dedupeByName([...names.value, ...normalizedRows]).map(normalizeNameRecord)
+    }
+
+    hasMoreNames.value = (data || []).length === PAGE_SIZE
   } catch (error) {
     console.error('Error fetching names:', error)
   } finally {
     isLoading.value = false
+    isLoadingMore.value = false
   }
 }
 
@@ -122,7 +141,7 @@ const openName = async (item) => {
 }
 
 const loadMore = () => {
-  visibleCount.value += 60
+  fetchNames({ reset: false })
 }
 
 onMounted(() => {
@@ -130,6 +149,11 @@ onMounted(() => {
     searchQuery.value = route.query.q
   }
   fetchNames()
+})
+
+watch(searchQuery, () => {
+  if (searchTimer) window.clearTimeout(searchTimer)
+  searchTimer = window.setTimeout(() => fetchNames(), 300)
 })
 </script>
 
@@ -155,7 +179,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-else-if="filteredNames.length > 0" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div v-else-if="visibleNames.length > 0" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <NameCard
             v-for="item in visibleNames"
             :key="item.id || item.name"
@@ -168,10 +192,11 @@ onMounted(() => {
         </div>
         <div v-if="hasMoreNames" class="mt-10 text-center">
           <button
+            :disabled="isLoadingMore"
             class="rounded-full border border-outline-variant px-5 py-3 font-label text-sm font-semibold text-primary transition-colors hover:bg-surface-container-low"
             @click="loadMore"
           >
-            Load More Names
+            {{ isLoadingMore ? 'Loading...' : 'Load More Names' }}
           </button>
         </div>
         <div v-else class="py-20 text-center">

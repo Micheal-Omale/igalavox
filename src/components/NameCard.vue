@@ -23,6 +23,7 @@ defineProps({
 const emit = defineEmits(['select'])
 const audio = ref(null)
 const isPlaying = ref(false)
+const audioError = ref(false)
 
 const toggleAudio = async () => {
   if (!audio.value) return
@@ -35,8 +36,15 @@ const toggleAudio = async () => {
   }
 
   audio.value.currentTime = 0
-  await audio.value.play()
-  isPlaying.value = true
+  try {
+    await audio.value.play()
+    isPlaying.value = true
+    audioError.value = false
+  } catch (error) {
+    console.error('Audio playback failed:', error)
+    audioError.value = true
+    isPlaying.value = false
+  }
 }
 
 const handleEnded = () => {
@@ -64,14 +72,14 @@ const openDetails = () => {
         class="rounded-full p-2 text-tertiary transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
         type="button"
         :aria-label="`Play ${name} pronunciation`"
-        :disabled="!audioSrc"
+        :disabled="!audioSrc || audioError"
         @click.stop="toggleAudio"
       >
         <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">
-          {{ isPlaying ? 'pause_circle' : 'play_circle' }}
+          {{ audioError ? 'volume_off' : isPlaying ? 'pause_circle' : 'play_circle' }}
         </span>
       </button>
-      <audio v-if="audioSrc" ref="audio" :src="audioSrc" preload="metadata" @ended="handleEnded" />
+      <audio v-if="audioSrc" ref="audio" :src="audioSrc" preload="none" @ended="handleEnded" @error="audioError = true" />
     </div>
     <p class="mb-6 font-body text-lg leading-relaxed text-on-surface">{{ meaning }}</p>
     <div class="flex flex-wrap gap-2">

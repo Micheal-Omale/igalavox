@@ -32,8 +32,6 @@ const story = computed(() => entry.value.story || entry.value.description || ent
 const proverb = computed(() => entry.value.proverb || 'A name remembered keeps the lineage awake.')
 const modalAudioSrc = computed(() => props.audioSrc || entry.value.audioSrc || entry.value.audio_url || entry.value.audioUrl || entry.value.audio || '')
 const gender = computed(() => entry.value.gender || 'Unisex')
-const region = computed(() => entry.value.region || entry.value.category || entry.value.origin || 'Igala land')
-const era = computed(() => entry.value.era || 'Living archive')
 const tags = computed(() => {
   const rawTags = Array.isArray(entry.value.tags) ? entry.value.tags : []
   return [...new Set([...rawTags, gender.value].filter(Boolean))].slice(0, 3)
@@ -435,17 +433,6 @@ onBeforeUnmount(() => {
             <blockquote class="font-headline text-xl font-medium italic leading-snug text-on-tertiary-container sm:text-2xl">
               "{{ proverb }}"
             </blockquote>
-          </section>
-
-          <section class="grid grid-cols-1 gap-5 pt-1 sm:grid-cols-2 sm:gap-6 sm:pt-2">
-            <div class="space-y-1">
-              <span class="font-label text-xs font-semibold uppercase tracking-[0.14em] text-outline">Region</span>
-              <p class="font-body text-base font-semibold text-primary">{{ region }}</p>
-            </div>
-            <div class="space-y-1">
-              <span class="font-label text-xs font-semibold uppercase tracking-[0.14em] text-outline">Era</span>
-              <p class="font-body text-base font-semibold text-primary">{{ era }}</p>
-            </div>
           </section>
         </div>
 

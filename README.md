@@ -2,7 +2,7 @@
 
 ## Environment Variables
 
-Create `.env` locally from `.env.example`.
+<!-- Create `.env` locally from `.env.example`.
 
 Required for Vercel:
 
@@ -14,4 +14,4 @@ VITE_CONTRIBUTION_EMAIL=contributions@example.com
 
 Add same keys in Vercel: Project Settings -> Environment Variables. Redeploy after saving.
 
-Do not add Supabase service-role or `sb_secret_*` keys to frontend `VITE_` variables.
+Do not add Supabase service-role or `sb_secret_*` keys to frontend `VITE_` variables. -->

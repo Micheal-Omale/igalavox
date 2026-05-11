@@ -25,13 +25,13 @@ const handleSearch = () => {
 const featuredNames = [
   {
     name: 'Enefola',
-    meaning: '"God is the greatest" or "God has done me well."',
-    tags: ['Divine', 'Praise'],
+    meaning: '"Who finds trouble."',
+    tags: ['Life', 'Experience'],
     audioSrc: enefolaAudio,
     gender: 'Unisex',
     genderIcon: 'person',
-    story: 'Enefola carries gratitude for divine goodness and protection. Families use it to remember moments of help, survival, or blessing that feel larger than human effort.',
-    proverb: 'A name of praise keeps the memory of mercy alive.',
+    story: 'Enefola reflects caution and lived experience, naming one who encounters trouble or difficult situations and must learn wisdom through them.',
+    proverb: 'One who meets trouble also learns the path around it.',
   },
   {
     name: 'Attah',
