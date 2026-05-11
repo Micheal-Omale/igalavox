@@ -1,5 +1,17 @@
-# Vue 3 + Vite
+# Igala Names Archive
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+## Environment Variables
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+Create `.env` locally from `.env.example`.
+
+Required for Vercel:
+
+```env
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-publishable-or-anon-key
+VITE_CONTRIBUTION_EMAIL=contributions@example.com
+```
+
+Add same keys in Vercel: Project Settings -> Environment Variables. Redeploy after saving.
+
+Do not add Supabase service-role or `sb_secret_*` keys to frontend `VITE_` variables.
