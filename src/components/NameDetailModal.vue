@@ -28,11 +28,11 @@ const entry = computed(() => (typeof props.name === 'string' ? { name: props.nam
 
 const displayName = computed(() => entry.value.name || 'Unnamed entry')
 const meaning = computed(() => entry.value.meaning || 'Meaning is being reviewed by the archive team.')
-const story = computed(() => entry.value.story || 'This archive entry is still gathering its full cultural context, oral history, and family usage notes.')
+const story = computed(() => entry.value.story || entry.value.description || entry.value.origin_story_final || entry.value.origin_story_ai || 'This archive entry is still gathering its full cultural context, oral history, and family usage notes.')
 const proverb = computed(() => entry.value.proverb || 'A name remembered keeps the lineage awake.')
-const modalAudioSrc = computed(() => props.audioSrc || entry.value.audioSrc || entry.value.audioUrl || entry.value.audio || entry.value.pronunciationAudio || '')
+const modalAudioSrc = computed(() => props.audioSrc || entry.value.audioSrc || entry.value.audio_url || entry.value.audioUrl || entry.value.audio || '')
 const gender = computed(() => entry.value.gender || 'Unisex')
-const region = computed(() => entry.value.region || 'Igala land')
+const region = computed(() => entry.value.region || entry.value.category || entry.value.origin || 'Igala land')
 const era = computed(() => entry.value.era || 'Living archive')
 const tags = computed(() => {
   const rawTags = Array.isArray(entry.value.tags) ? entry.value.tags : []

@@ -12,7 +12,7 @@ const links = [
   { label: 'Home', to: '/' },
   { label: 'Archive', to: '/names' },
   { label: 'About', to: '/about' },
-  { label: 'Submit', to: '/signup' },
+  { label: 'Contribute', to: '/contribute' },
 ]
 
 const handleSearch = () => {
@@ -94,11 +94,11 @@ const closeMobileMenu = () => {
           {{ link.label }}
         </RouterLink>
 
-        <form @submit.prevent="handleSearch" class="relative mt-2 block">
+        <form @submit.prevent="handleSearch" class="relative mt-3 w-full max-w-64 self-center">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input
             v-model="searchQuery"
-            class="w-full rounded-full border border-outline-variant bg-surface-container-low py-3 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
+            class="w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
             placeholder="Search names..."
             type="search"
           />

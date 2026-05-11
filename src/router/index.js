@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { useAuthStore } from '../stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,10 +21,18 @@ const router = createRouter({
       component: () => import('../views/NamesView.vue')
     },
     {
-      path: '/signup',
-      name: 'signup',
-      component: () => import('../views/SignupView.vue'),
+      path: '/contribute',
+      name: 'contribute',
+      component: () => import('../views/ContributeView.vue'),
       meta: { hideShell: true }
+    },
+    {
+      path: '/signup',
+      redirect: '/contribute'
+    },
+    {
+      path: '/submit',
+      redirect: '/contribute'
     },
     {
       path: '/signin',
@@ -37,13 +46,24 @@ const router = createRouter({
       component: () => import('../views/AdminDashboardView.vue'),
       meta: { hideShell: true }
     },
+    // Legacy redirect — /admin/names now lives inside the main dashboard
     {
       path: '/admin/names',
-      name: 'admin-names',
-      component: () => import('../views/ManageNameArchiveView.vue'),
-      meta: { hideShell: true }
+      redirect: '/admin'
     }
   ]
+})
+
+router.beforeEach((to, from, next) => {
+  if (to.path.startsWith('/admin')) {
+    const authStore = useAuthStore()
+    // Simple check. Real app should wait for auth to initialize
+    if (!authStore.isAdmin() && !authStore.loading) {
+      next({ name: 'signin' })
+      return
+    }
+  }
+  next()
 })
 
 export default router

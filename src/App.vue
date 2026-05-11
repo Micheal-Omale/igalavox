@@ -1,10 +1,17 @@
 <script setup>
 import { useRoute } from 'vue-router'
 import { RouterView } from 'vue-router'
+import { onMounted } from 'vue'
+import { useAuthStore } from './stores/authStore'
 import SiteFooter from './components/SiteFooter.vue'
 import SiteNavbar from './components/SiteNavbar.vue'
 
 const route = useRoute()
+const authStore = useAuthStore()
+
+onMounted(() => {
+  authStore.initializeAuth()
+})
 </script>
 
 <template>

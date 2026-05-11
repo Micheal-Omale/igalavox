@@ -1,82 +1,135 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { supabase } from '../services/supabase'
 import HeritageDivider from '../components/HeritageDivider.vue'
 import NameCard from '../components/NameCard.vue'
 import NameDetailModal from '../components/NameDetailModal.vue'
 import SearchPanel from '../components/SearchPanel.vue'
-import attahAudio from '../assets/audio/Attah.m4a'
-import enefolaAudio from '../assets/audio/Enefola.m4a'
-import ojonugwaAudio from '../assets/audio/Ojonugwa.m4a'
-import ikojoAudio from '../assets/audio/Ikojo U.m4a'
-import enyojoAudio from '../assets/audio/enyojo U.m4a'
+import { normalizeNameRecord } from '../utils/nameRecord'
 
 const route = useRoute()
 const searchQuery = ref(route.query.q || '')
 const selectedName = ref(null)
 
-const names = [
-  {
-    name: 'Enefola',
-    meaning: '"God is the greatest" or "God has done me well."',
-    tags: ['Divine', 'Praise'],
-    audioSrc: enefolaAudio,
-    gender: 'Unisex',
-    story: 'Enefola carries gratitude for divine goodness and protection. Families use it to remember moments of help, survival, or blessing that feel larger than human effort.',
-    proverb: 'A name of praise keeps the memory of mercy alive.',
-  },
-  {
-    name: 'Attah',
-    meaning: '"Father" or "King." A title of supreme respect and royalty.',
-    tags: ['Royalty', 'Masculine'],
-    audioSrc: attahAudio,
-    gender: 'Male',
-    story: 'Attah is tied to authority, ancestry, and the royal imagination of Igala identity. It speaks of fatherhood, leadership, and the responsibility to protect a people.',
-    proverb: 'Where the father stands, the lineage finds its path.',
-  },
-  {
-    name: 'Ojonugwa',
-    meaning: '"God is good." A popular name expressing gratitude.',
-    tags: ['Unisex', 'Gratitude'],
-    audioSrc: ojonugwaAudio,
-    gender: 'Unisex',
-    story: 'Ojonugwa is a declaration of faith and thanksgiving. It is often chosen to mark a season where goodness, relief, or hope became visible to the family.',
-    proverb: 'Goodness remembered becomes strength for tomorrow.',
-  },
-  {
-    name: 'Ikojo',
-    meaning: "God's time or God's season.",
-    tags: ['Divine', 'Timing'],
-    audioSrc: ikojoAudio,
-    gender: 'Unisex',
-    story: 'Ikojo reflects the belief that everything happens in the perfect timing of the creator. It is often given when a child arrives after a long wait.',
-    proverb: 'The clock of heaven never misses a beat.',
-  },
-  {
-    name: 'Enyojo',
-    meaning: "God's grace or favor.",
-    tags: ['Divine', 'Grace'],
-    audioSrc: enyojoAudio,
-    gender: 'Unisex',
-    story: 'Enyojo is a testimony of unmerited favor. It signifies that the child is a gift from God, given out of His infinite grace.',
-    proverb: 'Grace is the rain that falls on every heart.',
-  },
-]
+const names = ref([])
+const isLoading = ref(true)
+const isDetailLoading = ref(false)
+const visibleCount = ref(60)
+
+const SUMMARY_CACHE_KEY = 'names-view-summary-cache-v1'
+const SUMMARY_CACHE_TTL_MS = 5 * 60 * 1000
+const SUMMARY_SELECT = 'id, name, meaning, tags, gender, audio_id, audio_url, audio_files(file_url, file_name), updated_at'
+
+const dedupeByName = (rows) => {
+  const byName = new Map()
+
+  for (const row of rows) {
+    const existing = byName.get(row.name)
+    if (!existing) {
+      byName.set(row.name, row)
+      continue
+    }
+
+    const existingScore = Number(Boolean(existing.audio_id || existing.audio_url || existing.audio_files?.file_url)) + Number(Boolean(existing.updated_at))
+    const nextScore = Number(Boolean(row.audio_id || row.audio_url || row.audio_files?.file_url)) + Number(Boolean(row.updated_at))
+
+    if (nextScore >= existingScore) {
+      byName.set(row.name, row)
+    }
+  }
+
+  return [...byName.values()]
+}
+
+const readSummaryCache = () => {
+  const raw = sessionStorage.getItem(SUMMARY_CACHE_KEY)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw)
+    if (Date.now() - parsed.savedAt > SUMMARY_CACHE_TTL_MS) return null
+    return parsed.rows || null
+  } catch {
+    return null
+  }
+}
+
+const writeSummaryCache = (rows) => {
+  sessionStorage.setItem(SUMMARY_CACHE_KEY, JSON.stringify({
+    savedAt: Date.now(),
+    rows,
+  }))
+}
 
 const filteredNames = computed(() => {
-  if (!searchQuery.value) return names
+  if (!searchQuery.value) return names.value
   const q = searchQuery.value.toLowerCase()
-  return names.filter(n => 
+  return names.value.filter(n => 
     n.name.toLowerCase().includes(q) || 
     n.meaning.toLowerCase().includes(q) ||
-    n.tags.some(t => t.toLowerCase().includes(q))
+    (n.tags && n.tags.some(t => t.toLowerCase().includes(q)))
   )
 })
+
+const visibleNames = computed(() => filteredNames.value.slice(0, visibleCount.value))
+const hasMoreNames = computed(() => visibleNames.value.length < filteredNames.value.length)
+
+const fetchNames = async () => {
+  isLoading.value = true
+  try {
+    const cachedRows = readSummaryCache()
+    if (cachedRows) {
+      names.value = cachedRows.map(normalizeNameRecord)
+      isLoading.value = false
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('names')
+      .select(SUMMARY_SELECT)
+      .order('name', { ascending: true })
+
+    if (error) throw error
+    const dedupedRows = dedupeByName(data || [])
+    writeSummaryCache(dedupedRows)
+    names.value = dedupedRows.map(normalizeNameRecord)
+  } catch (error) {
+    console.error('Error fetching names:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const openName = async (item) => {
+  selectedName.value = item
+  isDetailLoading.value = true
+
+  try {
+    const { data, error } = await supabase
+      .from('names')
+      .select('*, audio_files(file_url, file_name)')
+      .eq('id', item.id)
+      .single()
+
+    if (error) throw error
+    selectedName.value = normalizeNameRecord(data)
+  } catch (error) {
+    console.error('Error loading name details:', error)
+  } finally {
+    isDetailLoading.value = false
+  }
+}
+
+const loadMore = () => {
+  visibleCount.value += 60
+}
 
 onMounted(() => {
   if (route.query.q) {
     searchQuery.value = route.query.q
   }
+  fetchNames()
 })
 </script>
 
@@ -92,18 +145,34 @@ onMounted(() => {
       </div>
     </section>
 
-    <section class="px-4 py-12 sm:px-6 sm:py-16">
+    <section class="bg-surface px-4 py-16 sm:px-6 sm:py-20">
       <div class="mx-auto max-w-7xl">
-        <div v-if="filteredNames.length > 0" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <!-- Loading state -->
+        <div v-if="isLoading" class="flex items-center justify-center py-20">
+          <div class="flex flex-col items-center gap-3">
+            <div class="h-8 w-8 animate-spin rounded-full border-2 border-outline-variant border-t-secondary"></div>
+            <span class="font-body text-sm text-on-surface-variant">Loading names...</span>
+          </div>
+        </div>
+
+        <div v-else-if="filteredNames.length > 0" class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           <NameCard
-            v-for="item in filteredNames"
-            :key="item.name"
+            v-for="item in visibleNames"
+            :key="item.id || item.name"
             :name="item.name"
             :meaning="item.meaning"
             :tags="item.tags"
             :audio-src="item.audioSrc"
-            @select="selectedName = item"
+            @select="openName(item)"
           />
+        </div>
+        <div v-if="hasMoreNames" class="mt-10 text-center">
+          <button
+            class="rounded-full border border-outline-variant px-5 py-3 font-label text-sm font-semibold text-primary transition-colors hover:bg-surface-container-low"
+            @click="loadMore"
+          >
+            Load More Names
+          </button>
         </div>
         <div v-else class="py-20 text-center">
           <span class="material-symbols-outlined mb-4 text-6xl text-outline-variant">search_off</span>
@@ -124,6 +193,14 @@ onMounted(() => {
       :audio-src="selectedName.audioSrc"
       @close="selectedName = null"
     />
+    <div
+      v-if="selectedName && isDetailLoading"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-inverse-surface/20 backdrop-blur-[1px]"
+    >
+      <div class="rounded-full bg-surface px-4 py-2 font-body text-sm text-on-surface shadow-lg">
+        Loading details...
+      </div>
+    </div>
 
     <HeritageDivider />
   </main>

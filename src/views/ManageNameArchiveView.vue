@@ -1,12 +1,34 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { computed, ref, onMounted } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { supabase } from '../services/supabase'
 import BrandLogo from '../components/BrandLogo.vue'
+import NameDetailModal from '../components/NameDetailModal.vue'
+import { normalizeNameRecord } from '../utils/nameRecord'
 
 const isMobileMenuOpen = ref(false)
 const searchQuery = ref('')
 const selectedCategory = ref('')
 const selectedStatus = ref('')
+const selectedName = ref(null)
+
+const router = useRouter()
+
+const editName = (entry) => {
+  router.push({ path: '/admin', query: { editId: entry.id } })
+}
+
+const deleteName = async (id) => {
+  if (!confirm('Are you sure you want to delete this name?')) return
+  try {
+    const { error } = await supabase.from('names').delete().eq('id', id)
+    if (error) throw error
+    names.value = names.value.filter(n => n.id !== id)
+  } catch (err) {
+    console.error('Failed to delete name:', err)
+    alert('Failed to delete name')
+  }
+}
 
 const navItems = [
   { label: 'Dashboard', icon: 'dashboard', to: '/admin', active: false },
@@ -15,64 +37,72 @@ const navItems = [
   { label: 'Settings', icon: 'settings', to: '/admin/names', active: false },
 ]
 
-const names = [
-  {
-    name: 'Achenyo',
-    meaning: 'The one who causes joy or brings happiness to the family.',
-    category: 'Descriptive',
-    categoryTone: 'bg-secondary-container text-on-secondary-container border-secondary/20',
-    status: 'Published',
-    statusTone: 'bg-primary-container',
-    dateAdded: 'Oct 12, 2023',
-    initials: 'A',
-    avatarTone: 'bg-primary-container text-on-primary-container',
-  },
-  {
-    name: 'Ojochide',
-    meaning: "God's protection or under God's covering.",
-    category: 'Spiritual',
-    categoryTone: 'bg-clay/10 text-clay border-clay/20',
-    status: 'Published',
-    statusTone: 'bg-primary-container',
-    dateAdded: 'Oct 10, 2023',
-    initials: 'O',
-    avatarTone: 'bg-tertiary-container text-on-tertiary-container',
-  },
-  {
-    name: 'Eleojo',
-    meaning: 'Gift of God.',
-    category: 'Spiritual',
-    categoryTone: 'bg-clay/10 text-clay border-clay/20',
-    status: 'Draft',
-    statusTone: 'bg-outline',
-    dateAdded: 'Oct 08, 2023',
-    initials: 'E',
-    avatarTone: 'bg-secondary-fixed text-on-secondary-fixed',
-  },
-  {
-    name: 'Attah',
-    meaning: 'Father or King (Title often used as a name).',
-    category: 'Royal',
-    categoryTone: 'bg-tertiary-container text-on-tertiary-container border-tertiary/20',
-    status: 'Published',
-    statusTone: 'bg-primary-container',
-    dateAdded: 'Oct 05, 2023',
-    initials: 'A',
-    avatarTone: 'bg-primary-fixed-dim text-on-primary-fixed',
-  },
-]
+const names = ref([])
+const isLoading = ref(true)
+
+const fetchNames = async () => {
+  isLoading.value = true
+  try {
+    const { data, error } = await supabase
+      .from('names')
+      .select('*, audio_files(file_url)')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    
+    names.value = (data || []).map((rawItem) => {
+      const item = normalizeNameRecord(rawItem)
+      const category = item.category || (item.tags && item.tags[0]) || 'General'
+      let categoryTone = 'bg-clay/10 text-clay border-clay/20' // default
+      if (category.toLowerCase() === 'royal' || category.toLowerCase() === 'royalty') {
+        categoryTone = 'bg-tertiary-container text-on-tertiary-container border-tertiary/20'
+      } else if (category.toLowerCase() === 'descriptive') {
+        categoryTone = 'bg-secondary-container text-on-secondary-container border-secondary/20'
+      }
+
+      const dateAdded = new Date(item.created_at).toLocaleDateString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric'
+      })
+
+      const initials = item.name.charAt(0).toUpperCase()
+      
+      return {
+        ...item,
+        category,
+        categoryTone,
+        status: 'Published',
+        statusTone: 'bg-primary-container',
+        dateAdded,
+        initials,
+        avatarTone: 'bg-primary-container text-on-primary-container',
+      }
+    })
+  } catch (error) {
+    console.error('Error fetching names:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchNames()
+})
 
 const filteredNames = computed(() => {
-  return names.filter((entry) => {
+  return names.value.filter((entry) => {
     const matchesSearch = !searchQuery.value
       || entry.name.toLowerCase().includes(searchQuery.value.toLowerCase())
       || entry.meaning.toLowerCase().includes(searchQuery.value.toLowerCase())
 
-    const matchesCategory = !selectedCategory.value || entry.category.toLowerCase() === selectedCategory.value
-    const matchesStatus = !selectedStatus.value || entry.status.toLowerCase() === selectedStatus.value
+    const matchesCategory = !selectedCategory.value || entry.category.toLowerCase() === selectedCategory.value.toLowerCase()
+    const matchesStatus = !selectedStatus.value || entry.status.toLowerCase() === selectedStatus.value.toLowerCase()
 
     return matchesSearch && matchesCategory && matchesStatus
   })
+})
+
+const categoryOptions = computed(() => {
+  return [...new Set(names.value.map((entry) => entry.category).filter(Boolean))].sort()
 })
 
 const tableSummary = computed(() => {
@@ -143,11 +173,7 @@ const tableSummary = computed(() => {
                 <span class="material-symbols-outlined">help_outline</span>
               </button>
               <div class="h-8 w-8 overflow-hidden rounded-full border border-outline-variant bg-primary-container">
-                <img
-                  alt="Administrator profile"
-                  class="h-full w-full object-cover"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2nhjzZwl2m3XHOi3XqJc8ywejsT5aD7RuFRl77BJuDE22ITzXImfUcvYWuC1_7rkFM9mAm4CnJyomR0hZDy_erRlnGrl2d07jfuzPmUFQ-SuXoFc6LrQGWkvucKMsx6huy-VaI13TgpQgDuApBagiBvv4KwBzhdVl9xpZ6dbkoGN--2qj6-EZ5YfGa0NzhOx4D50soSQCM4JDgPNAy6yLxlsHi04ijUifMCXgZEsrLuZx9CDwcVdDq9vbUsP2HSQgFGBE6SSleg9Y"
-                />
+                <span class="material-symbols-outlined text-primary p-1">account_circle</span>
               </div>
             </div>
           </div>
@@ -229,9 +255,9 @@ const tableSummary = computed(() => {
                 class="min-w-[150px] rounded-lg border border-outline-variant bg-surface-container px-4 py-2 font-body text-sm text-on-surface outline-none transition focus:border-tertiary-container"
               >
                 <option value="">All Categories</option>
-                <option value="spiritual">Spiritual</option>
-                <option value="royal">Royal</option>
-                <option value="descriptive">Descriptive</option>
+                <option v-for="category in categoryOptions" :key="category" :value="category">
+                  {{ category }}
+                </option>
               </select>
 
               <select
@@ -294,13 +320,13 @@ const tableSummary = computed(() => {
                     </td>
                     <td class="px-6 py-4 text-right">
                       <div class="flex items-center justify-end gap-2 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-tertiary-container" type="button" title="View">
+                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-tertiary-container" type="button" title="View" @click="selectedName = entry">
                           <span class="material-symbols-outlined text-sm">visibility</span>
                         </button>
-                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-tertiary-container" type="button" title="Edit">
+                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-tertiary-container" type="button" title="Edit" @click="editName(entry)">
                           <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
-                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-error-container hover:text-error" type="button" title="Delete">
+                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-error-container hover:text-error" type="button" title="Delete" @click="deleteName(entry.id)">
                           <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>
@@ -343,5 +369,6 @@ const tableSummary = computed(() => {
         </main>
       </div>
     </div>
+    <NameDetailModal v-if="selectedName" :name="selectedName" @close="selectedName = null" />
   </main>
 </template>

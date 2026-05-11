@@ -117,11 +117,11 @@ const contributors = [
         <div class="relative z-10">
           <h2 class="mb-4 font-headline text-3xl font-semibold">Contribute to the Archive</h2>
           <p class="mb-8 font-body text-base leading-relaxed text-primary-fixed">
-            Ensure your lineage is remembered. Join our community to submit names, share stories, and explore the vast heritage of the Igala people.
+            Ensure your lineage is remembered. Contribute names, share stories, and explore the vast heritage of the Igala people.
           </p>
           <div class="flex flex-wrap justify-center gap-4">
-            <AppButton to="/submit" variant="primary" class=" !text-on-tertiary-fixed !border-primary-fixed !bg-tertiary-fixed">
-              Submit a Name
+            <AppButton to="/contribute" variant="primary" class=" !text-on-tertiary-fixed !border-primary-fixed !bg-tertiary-fixed">
+              Contribute a Name
             </AppButton>
             <AppButton to="/names" variant="secondary" class="hover:text-on-tertiary-fixed !text-primary-fixed !border-primary-fixed hover:!bg-tertiary-fixed">
               Explore the Archive
