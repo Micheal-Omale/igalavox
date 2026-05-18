@@ -16,6 +16,11 @@ const router = createRouter({
       component: () => import('../views/AboutView.vue')
     },
     {
+      path: '/privacy',
+      name: 'privacy',
+      component: () => import('../views/PrivacyView.vue')
+    },
+    {
       path: '/names',
       name: 'names',
       component: () => import('../views/NamesView.vue')
@@ -25,6 +30,31 @@ const router = createRouter({
       name: 'contribute',
       component: () => import('../views/ContributeView.vue'),
       meta: { hideShell: true }
+    },
+    {
+      path: '/impact',
+      name: 'impact',
+      component: () => import('../views/ImpactLandingView.vue')
+    },
+    {
+      path: '/impact/report',
+      name: 'impact-report',
+      component: () => import('../views/ImpactReportView.vue')
+    },
+    {
+      path: '/impact/map',
+      name: 'impact-map',
+      component: () => import('../views/ImpactMapView.vue')
+    },
+    {
+      path: '/impact/stories',
+      name: 'impact-stories',
+      component: () => import('../views/ImpactStoriesFeedView.vue')
+    },
+    {
+      path: '/impact/stories/:id',
+      name: 'impact-story-detail',
+      component: () => import('../views/ImpactStoryDetailView.vue')
     },
     {
       path: '/signup',
@@ -44,26 +74,50 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('../views/AdminDashboardView.vue'),
-      meta: { hideShell: true }
+      meta: { hideShell: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/impact',
+      name: 'admin-reports',
+      component: () => import('../views/AdminReportsView.vue'),
+      meta: { hideShell: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/reports',
+      redirect: '/admin/impact'
     },
     // Legacy redirect — /admin/names now lives inside the main dashboard
     {
       path: '/admin/names',
       redirect: '/admin'
     }
-  ]
-})
-
-router.beforeEach((to, from, next) => {
-  if (to.path.startsWith('/admin')) {
-    const authStore = useAuthStore()
-    // Simple check. Real app should wait for auth to initialize
-    if (!authStore.isAdmin() && !authStore.loading) {
-      next({ name: 'signin' })
-      return
+  ],
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition
+    } else if (to.hash) {
+      return {
+        el: to.hash,
+        behavior: 'smooth'
+      }
+    } else {
+      return { top: 0 }
     }
   }
-  next()
+})
+
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAdmin) return true
+
+  const authStore = useAuthStore()
+  await authStore.initializeAuth()
+
+  if (authStore.isAdmin()) return true
+
+  return {
+    name: 'signin',
+    query: { redirect: to.fullPath },
+  }
 })
 
 export default router

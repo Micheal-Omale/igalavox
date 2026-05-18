@@ -1,0 +1,56 @@
+[
+  {
+    "community_name": "Idah",
+    "lga": "Idah",
+    "latitude": 7.1135,
+    "longitude": 6.7385
+  },
+  {
+    "community_name": "Anyigba",
+    "lga": "Dekina",
+    "latitude": 7.4934,
+    "longitude": 7.1737
+  },
+  {
+    "community_name": "Ankpa",
+    "lga": "Ankpa",
+    "latitude": 7.4025,
+    "longitude": 7.6319
+  },
+  {
+    "community_name": "Ejule",
+    "lga": "Ofu",
+    "latitude": 7.0415,
+    "longitude": 6.9193
+  },
+  {
+    "community_name": "Abejukolo",
+    "lga": "Omala",
+    "latitude": 7.8681,
+    "longitude": 7.5097
+  },
+  {
+    "community_name": "Ibaji",
+    "lga": "Ibaji",
+    "latitude": 6.8739,
+    "longitude": 6.6905
+  },
+  {
+    "community_name": "Olamaboro",
+    "lga": "Olamaboro",
+    "latitude": 7.5401,
+    "longitude": 7.5631
+  },
+  {
+    "community_name": "Igalamela-Odolu",
+    "lga": "Igalamela-Odolu",
+    "latitude": 7.1711,
+    "longitude": 6.8264
+  },
+  {
+    "community_name": "Bassa",
+    "lga": "Bassa",
+    "latitude": 7.9000,
+    "longitude": 7.0500
+  }
+]

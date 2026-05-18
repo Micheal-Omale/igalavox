@@ -42,11 +42,44 @@ CREATE TABLE submissions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Community Impact
+CREATE TABLE IF NOT EXISTS communities (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  community_name TEXT NOT NULL,
+  lga TEXT NOT NULL,
+  latitude NUMERIC,
+  longitude NUMERIC
+);
+
+CREATE TABLE IF NOT EXISTS reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category TEXT NOT NULL CHECK (category IN ('water', 'electricity', 'roads', 'healthcare')),
+  title TEXT,
+  description TEXT NOT NULL,
+  community_name TEXT NOT NULL,
+  lga TEXT NOT NULL,
+  latitude NUMERIC,
+  longitude NUMERIC,
+  image_url TEXT,
+  image_urls TEXT[],
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'resolved')),
+  verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS image_urls TEXT[];
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_image_urls_max_3;
+ALTER TABLE reports ADD CONSTRAINT reports_image_urls_max_3 CHECK (image_urls IS NULL OR cardinality(image_urls) <= 3);
+
 -- RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audio_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE names ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE communities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
 
 -- Policies for Admins (all operations) - temporarily PUBLIC for MVP without Auth
 DROP POLICY IF EXISTS "Admins full access" ON profiles;
@@ -70,11 +103,56 @@ CREATE POLICY "Public read audio_files" ON audio_files FOR SELECT TO anon USING 
 DROP POLICY IF EXISTS "Public insert submissions" ON submissions;
 CREATE POLICY "Public insert submissions" ON submissions FOR INSERT TO anon WITH CHECK (true);
 
+-- Community Impact policies
+DROP POLICY IF EXISTS "Public read communities" ON communities;
+DROP POLICY IF EXISTS "Admins manage communities" ON communities;
+DROP POLICY IF EXISTS "Public read approved reports" ON reports;
+DROP POLICY IF EXISTS "Public submit pending reports" ON reports;
+DROP POLICY IF EXISTS "Admins manage reports" ON reports;
+
+CREATE POLICY "Public read communities" ON communities FOR SELECT TO public USING (true);
+CREATE POLICY "Admins manage communities" ON communities FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
+CREATE POLICY "Public read approved reports" ON reports FOR SELECT TO public
+USING (status IN ('approved', 'resolved'));
+CREATE POLICY "Public submit pending reports" ON reports FOR INSERT TO public
+WITH CHECK (status = 'pending' AND verified = false);
+CREATE POLICY "Admins manage reports" ON reports FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_names_name ON names(name);
+CREATE INDEX IF NOT EXISTS idx_communities_lga ON communities(lga);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_communities_name_lga ON communities(community_name, lga);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_category ON reports(category);
+CREATE INDEX IF NOT EXISTS idx_reports_lga ON reports(lga);
+
+INSERT INTO communities (community_name, lga, latitude, longitude) VALUES
+  ('Idah', 'Idah', 7.1135, 6.7385),
+  ('Anyigba', 'Dekina', 7.4934, 7.1737),
+  ('Ankpa', 'Ankpa', 7.4025, 7.6319),
+  ('Ejule', 'Ofu', 7.0415, 6.9193),
+  ('Abejukolo', 'Omala', 7.8681, 7.5097),
+  ('Ibaji', 'Ibaji', 6.8739, 6.6905),
+  ('Olamaboro', 'Olamaboro', 7.5401, 7.5631),
+  ('Omala', 'Omala', 7.7167, 7.5500),
+  ('Igalamela-Odolu', 'Igalamela-Odolu', 7.1711, 6.8264),
+  ('Bassa', 'Bassa', 7.9000, 7.0500)
+ON CONFLICT (community_name, lga) DO UPDATE SET
+  latitude = EXCLUDED.latitude,
+  longitude = EXCLUDED.longitude;
+
+-- Clean up any obsolete entries
+DELETE FROM communities WHERE community_name = 'Ayingba' AND lga = 'Dekina';
 
 -- Storage buckets
 INSERT INTO storage.buckets (id, name, public) VALUES ('audio', 'audio', true)
+ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
+INSERT INTO storage.buckets (id, name, public) VALUES ('impact-reports', 'impact-reports', true)
 ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
 
 -- Storage policies
@@ -82,9 +160,20 @@ DROP POLICY IF EXISTS "Public read audio" ON storage.objects;
 DROP POLICY IF EXISTS "Admin upload audio" ON storage.objects;
 DROP POLICY IF EXISTS "Admin update audio" ON storage.objects;
 DROP POLICY IF EXISTS "Admin delete audio" ON storage.objects;
+DROP POLICY IF EXISTS "Public read impact reports" ON storage.objects;
+DROP POLICY IF EXISTS "Public upload impact reports" ON storage.objects;
+DROP POLICY IF EXISTS "Admin delete impact reports" ON storage.objects;
 
 CREATE POLICY "Public read audio" ON storage.objects FOR SELECT TO public USING (bucket_id = 'audio');
 CREATE POLICY "Admin upload audio" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'audio');
 CREATE POLICY "Admin update audio" ON storage.objects FOR UPDATE TO public USING (bucket_id = 'audio');
 CREATE POLICY "Admin delete audio" ON storage.objects FOR DELETE TO public USING (bucket_id = 'audio');
+
+CREATE POLICY "Public read impact reports" ON storage.objects FOR SELECT TO public USING (bucket_id = 'impact-reports');
+CREATE POLICY "Public upload impact reports" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'impact-reports');
+CREATE POLICY "Admin delete impact reports" ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'impact-reports'
+  AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
 

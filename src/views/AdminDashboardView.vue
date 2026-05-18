@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { supabase } from '../services/supabase'
+import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { useAuthStore } from '../stores/authStore'
 import BrandLogo from '../components/BrandLogo.vue'
 import AudioSidePanel from '../components/AudioSidePanel.vue'
@@ -23,11 +23,7 @@ const pageSize = 25
 const currentlyPlayingId = ref(null)
 const audioElements = ref({})
 
-const navItems = [
-  { label: 'Audio Archive', icon: 'library_music', id: 'archive', active: true },
-  { label: 'Audio Queue', icon: 'queue_music', id: 'queue', active: false },
-  { label: 'Statistics', icon: 'bar_chart', id: 'stats', active: false },
-]
+let namesSubscription = null
 
 const totalNames = computed(() => names.value.length)
 const withAudio = computed(() => names.value.filter((n) => n.audioUrl).length)
@@ -41,8 +37,8 @@ const categoryOptions = computed(() => {
   return [...new Set(names.value.map((entry) => entry.category).filter(Boolean))].sort()
 })
 
-const fetchNames = async () => {
-  isLoading.value = true
+const fetchNames = async (showLoader = true) => {
+  if (showLoader) isLoading.value = true
   try {
     const { data, error } = await supabase
       .from('names')
@@ -54,11 +50,28 @@ const fetchNames = async () => {
   } catch (error) {
     console.error('Error fetching names:', error)
   } finally {
-    isLoading.value = false
+    if (showLoader) isLoading.value = false
   }
 }
 
-onMounted(fetchNames)
+onMounted(() => {
+  fetchNames()
+
+  if (isSupabaseConfigured) {
+    namesSubscription = supabase
+      .channel('public:names')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'names' }, () => {
+        fetchNames(false)
+      })
+      .subscribe()
+  }
+})
+
+onUnmounted(() => {
+  if (namesSubscription) {
+    supabase.removeChannel(namesSubscription)
+  }
+})
 
 const filteredNames = computed(() => {
   return names.value.filter((entry) => {
@@ -206,17 +219,25 @@ const signOut = async () => {
         </div>
 
         <nav class="flex-1 space-y-0.5 px-3">
-          <button
-            v-for="item in navItems"
-            :key="item.id"
-            :class="[
-              'flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-all',
-              item.active ? 'bg-primary-container/10 text-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary',
-            ]"
+          <RouterLink
+            to="/admin"
+            class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-all"
+            active-class="bg-primary-container/10 text-primary shadow-sm"
+            exact-active-class="bg-primary-container/10 text-primary shadow-sm"
+            :class="[ $route.path === '/admin' ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
           >
-            <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-            <span>{{ item.label }}</span>
-          </button>
+            <span class="material-symbols-outlined text-[20px]">library_music</span>
+            <span>Audio Archive</span>
+          </RouterLink>
+          <RouterLink
+            to="/admin/impact"
+            class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-all"
+            active-class="bg-primary-container/10 text-primary shadow-sm"
+            :class="[ $route.path.startsWith('/admin/impact') ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
+          >
+            <span class="material-symbols-outlined text-[20px]">campaign</span>
+            <span>Community Impact</span>
+          </RouterLink>
         </nav>
 
         <div class="border-t border-outline-variant/30 px-4 py-4">
@@ -283,18 +304,27 @@ const signOut = async () => {
               </button>
             </div>
             <nav class="space-y-0.5">
-              <button
-                v-for="item in navItems"
-                :key="item.id"
-                :class="[
-                  'flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-colors',
-                  item.active ? 'bg-primary-container/10 text-primary' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary',
-                ]"
+              <RouterLink
+                to="/admin"
+                class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-colors"
+                active-class="bg-primary-container/10 text-primary"
+                exact-active-class="bg-primary-container/10 text-primary"
+                :class="[ $route.path === '/admin' ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
                 @click="isMobileMenuOpen = false"
               >
-                <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-                <span>{{ item.label }}</span>
-              </button>
+                <span class="material-symbols-outlined text-[20px]">library_music</span>
+                <span>Audio Archive</span>
+              </RouterLink>
+              <RouterLink
+                to="/admin/impact"
+                class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-colors"
+                active-class="bg-primary-container/10 text-primary"
+                :class="[ $route.path.startsWith('/admin/impact') ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
+                @click="isMobileMenuOpen = false"
+              >
+                <span class="material-symbols-outlined text-[20px]">campaign</span>
+                <span>Community Impact</span>
+              </RouterLink>
             </nav>
           </aside>
         </div>

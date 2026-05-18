@@ -1,6 +1,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import BrandLogo from '../components/BrandLogo.vue'
 
@@ -17,6 +17,7 @@ const errorMsg = ref('')
 
 const fieldClasses = 'block w-full rounded border border-surface-dim bg-surface-container-low px-4 py-3 font-body text-base text-on-surface placeholder:text-outline-variant outline-none transition-all focus:border-tertiary focus:ring-1 focus:ring-tertiary'
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const handleSignIn = async () => {
@@ -24,7 +25,7 @@ const handleSignIn = async () => {
   errorMsg.value = ''
   try {
     await authStore.signIn(form.email, form.password)
-    router.push('/admin')
+    router.push(route.query.redirect || '/admin')
   } catch (error) {
     errorMsg.value = error.message || 'Login failed'
   } finally {
