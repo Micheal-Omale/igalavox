@@ -1,14 +1,14 @@
 import attahAudio from '../assets/audio/Attah.m4a'
 import enefolaAudio from '../assets/audio/Enefola.m4a'
 import enyojoAudio from '../assets/audio/EnyojoU.m4a'
-import ikojoAudio from '../assets/audio/Ikojo U.m4a'
+import ikojoAudio from '../assets/audio/IkojoU.m4a'
 import ojonugwaAudio from '../assets/audio/Ojonugwa.m4a'
 
 const bundledAudio = {
   'attah.m4a': attahAudio,
   'enefola.m4a': enefolaAudio,
-   'enyojou.m4a': enyojoAudio,
-  'ikojo u.m4a': ikojoAudio,
+  'enyojou.m4a': enyojoAudio,
+  'ikojou.m4a': ikojoAudio,
   'ojonugwa.m4a': ojonugwaAudio,
 }
 
