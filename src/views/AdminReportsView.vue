@@ -1,25 +1,68 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import BrandLogo from '../components/BrandLogo.vue'
+import AdminNavLinks from '../components/admin/AdminNavLinks.vue'
 import { deleteImpactReport, fetchImpactReports, getCategoryMeta, updateReportStatus } from '../services/impactService'
 import { isSupabaseConfigured, supabase } from '../services/supabase'
 import { useAuthStore } from '../stores/authStore'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const reports = ref([])
 const isLoading = ref(true)
 const isSaving = ref('')
 const errorMessage = ref('')
 const selectedReport = ref(null)
+const pendingDeleteId = ref('')
 let reportsSubscription = null
+let deleteArmTimer = null
 
 const pendingCount = computed(() => reports.value.filter((report) => report.status === 'pending').length)
 const approvedCount = computed(() => reports.value.filter((report) => report.status === 'approved').length)
 const resolvedCount = computed(() => reports.value.filter((report) => report.status === 'resolved').length)
 
+function actionKey(reportId, action) {
+  return `${reportId}-${action}`
+}
+
+function isActionSaving(reportId, action) {
+  return isSaving.value === actionKey(reportId, action)
+}
+
+function resetPendingDelete() {
+  pendingDeleteId.value = ''
+  if (deleteArmTimer) {
+    window.clearTimeout(deleteArmTimer)
+    deleteArmTimer = null
+  }
+}
+
+function armDelete(reportId) {
+  pendingDeleteId.value = reportId
+  if (deleteArmTimer) {
+    window.clearTimeout(deleteArmTimer)
+  }
+  deleteArmTimer = window.setTimeout(() => {
+    pendingDeleteId.value = ''
+    deleteArmTimer = null
+  }, 4000)
+}
+
+function patchReportLocally(reportId, patch) {
+  reports.value = reports.value.map((report) => (
+    report.id === reportId ? { ...report, ...patch } : report
+  ))
+
+  if (selectedReport.value?.id === reportId) {
+    selectedReport.value = { ...selectedReport.value, ...patch }
+  }
+}
+
 async function loadReports(showLoader = true) {
   if (showLoader) isLoading.value = true
   try {
+    errorMessage.value = ''
     reports.value = await fetchImpactReports({}, true)
   } catch (error) {
     errorMessage.value = 'Unable to load reports.'
@@ -44,26 +87,54 @@ function formatDate(value) {
 }
 
 async function setStatus(report, status) {
-  isSaving.value = `${report.id}-${status}`
+  resetPendingDelete()
+  const previous = {
+    status: report.status,
+    verified: report.verified,
+  }
+  const nextVerified = status === 'approved' || status === 'resolved'
+    ? true
+    : status === 'rejected'
+      ? false
+      : report.verified
+
+  isSaving.value = actionKey(report.id, status)
+  patchReportLocally(report.id, { status, verified: nextVerified })
+
   try {
-    await updateReportStatus(report.id, status, status === 'approved' || status === 'resolved' ? true : report.verified)
-    await loadReports(false)
+    errorMessage.value = ''
+    await updateReportStatus(report.id, status, nextVerified)
   } catch (error) {
     errorMessage.value = error.message || 'Unable to update report.'
+    patchReportLocally(report.id, previous)
   } finally {
     isSaving.value = ''
   }
 }
 
 async function removeReport(report) {
-  if (!confirm(`Delete report from ${report.community_name}? This cannot be undone.`)) return
-  isSaving.value = `${report.id}-delete`
-  try {
-    await deleteImpactReport(report)
+  if (pendingDeleteId.value !== report.id) {
+    armDelete(report.id)
+    return
+  }
+
+  resetPendingDelete()
+  const previousReports = [...reports.value]
+  const previousSelected = selectedReport.value
+
+  isSaving.value = actionKey(report.id, 'delete')
+  reports.value = reports.value.filter((item) => item.id !== report.id)
+  if (selectedReport.value?.id === report.id) {
     selectedReport.value = null
-    await loadReports(false)
+  }
+
+  try {
+    errorMessage.value = ''
+    await deleteImpactReport(report)
   } catch (error) {
     errorMessage.value = error.message || 'Unable to delete report.'
+    reports.value = previousReports
+    selectedReport.value = previousSelected
   } finally {
     isSaving.value = ''
   }
@@ -71,7 +142,7 @@ async function removeReport(report) {
 
 async function signOut() {
   await authStore.signOut()
-  window.location.href = '/signin'
+  router.push('/signin')
 }
 
 onMounted(() => {
@@ -85,6 +156,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  resetPendingDelete()
   if (reportsSubscription) supabase.removeChannel(reportsSubscription)
 })
 </script>
@@ -97,16 +169,9 @@ onUnmounted(() => {
           <BrandLogo image-class="h-11 w-auto" />
           <p class="mt-1.5 font-label text-xs font-semibold uppercase tracking-[0.14em] text-secondary">Impact Reports</p>
         </div>
-        <nav class="flex-1 space-y-1 px-3 py-4">
-          <RouterLink to="/admin" class="flex items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold text-on-surface-variant hover:bg-surface-variant hover:text-primary">
-            <span class="material-symbols-outlined text-[20px]">library_music</span>
-            Audio Archive
-          </RouterLink>
-          <RouterLink to="/admin/impact" class="flex items-center gap-3 rounded-lg bg-primary-container/10 px-4 py-3 font-label text-sm font-semibold text-primary">
-            <span class="material-symbols-outlined text-[20px]">campaign</span>
-            Community Impact
-          </RouterLink>
-        </nav>
+        <div class="flex-1 px-3 py-4">
+          <AdminNavLinks />
+        </div>
         <button class="m-4 rounded border border-outline-variant px-4 py-3 font-label text-sm font-semibold text-secondary" type="button" @click="signOut">Sign out</button>
       </aside>
 
@@ -169,10 +234,44 @@ onUnmounted(() => {
                     <td class="px-5 py-4 font-body text-sm text-on-surface-variant">{{ formatDate(report.created_at) }}</td>
                     <td class="px-5 py-4">
                       <div class="flex justify-end gap-2">
-                        <button class="rounded border px-3 py-1 text-xs font-semibold text-primary" type="button" :disabled="isSaving" @click="setStatus(report, 'approved')">Approve</button>
-                        <button class="rounded border px-3 py-1 text-xs font-semibold text-clay" type="button" :disabled="isSaving" @click="setStatus(report, 'rejected')">Reject</button>
-                        <button class="rounded border px-3 py-1 text-xs font-semibold text-secondary" type="button" :disabled="isSaving" @click="setStatus(report, 'resolved')">Resolve</button>
-                        <button class="rounded border px-3 py-1 text-xs font-semibold text-error" type="button" :disabled="isSaving" @click="removeReport(report)">Delete</button>
+                        <button
+                          class="rounded border px-3 py-1 text-xs font-semibold text-primary disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          :disabled="Boolean(isSaving)"
+                          @click="setStatus(report, 'approved')"
+                        >
+                          {{ isActionSaving(report.id, 'approved') ? 'Approving...' : 'Approve' }}
+                        </button>
+                        <button
+                          class="rounded border px-3 py-1 text-xs font-semibold text-clay disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          :disabled="Boolean(isSaving)"
+                          @click="setStatus(report, 'rejected')"
+                        >
+                          {{ isActionSaving(report.id, 'rejected') ? 'Rejecting...' : 'Reject' }}
+                        </button>
+                        <button
+                          class="rounded border px-3 py-1 text-xs font-semibold text-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          :disabled="Boolean(isSaving)"
+                          @click="setStatus(report, 'resolved')"
+                        >
+                          {{ isActionSaving(report.id, 'resolved') ? 'Resolving...' : 'Resolve' }}
+                        </button>
+                        <button
+                          class="rounded border px-3 py-1 text-xs font-semibold text-error disabled:cursor-not-allowed disabled:opacity-50"
+                          type="button"
+                          :disabled="Boolean(isSaving)"
+                          @click="removeReport(report)"
+                        >
+                          {{
+                            isActionSaving(report.id, 'delete')
+                              ? 'Deleting...'
+                              : pendingDeleteId === report.id
+                                ? 'Confirm delete'
+                                : 'Delete'
+                          }}
+                        </button>
                       </div>
                     </td>
                   </tr>

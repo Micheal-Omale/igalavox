@@ -1,26 +1,26 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
+import CulturalHeritageSection from '../components/home/CulturalHeritageSection.vue'
+import EcosystemFeatureSection from '../components/home/EcosystemFeatureSection.vue'
+import HomeHeroSection from '../components/home/HomeHeroSection.vue'
+import ImpactStoriesPreviewSection from '../components/home/ImpactStoriesPreviewSection.vue'
+import MarketplaceTeaserSection from '../components/home/MarketplaceTeaserSection.vue'
 import HeritageDivider from '../components/HeritageDivider.vue'
 import NameCard from '../components/NameCard.vue'
 import NameDetailModal from '../components/NameDetailModal.vue'
-import SearchPanel from '../components/SearchPanel.vue'
 import attahAudio from '../assets/audio/Attah.m4a'
 import enefolaAudio from '../assets/audio/Enefola.m4a'
 import ojonugwaAudio from '../assets/audio/Ojonugwa.m4a'
+import { fetchImpactReports } from '../services/impactService'
 
 const router = useRouter()
 const heroImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCGx09habYTALPdHDiFHdU0l6gN2luQiGRsJkKbDuODFYu37RxVryvzdCyiHJ-GQ_SVo4JIzRw5BrIFI8Fng1u-F0pZinjBSmOw568fCbu4OqD6HPgs_ZmFUGhK0EOrWbLXQIzx9bl1aTSPtHipKFOKaASj7AAtpojuPe0l1JsH_A1bwnehMXb5HWTg6ZAS0SYmKLVa0J1OUZshoRP2qSrYEq2QIBtX34qcsB3JAeaMt1NyCZtJQk3Wbw92FLAv25na3JpuWhWtG-B'
 const selectedName = ref(null)
 const searchQuery = ref('')
-
-const handleSearch = () => {
-  router.push({
-    path: '/names',
-    query: { q: searchQuery.value }
-  })
-}
+const impactStories = ref([])
+const isStoriesLoading = ref(true)
 
 const featuredNames = [
   {
@@ -55,92 +55,139 @@ const featuredNames = [
   },
 ]
 
-const steps = [
+const ecosystemHighlights = [
   {
-    title: 'Search',
-    body: 'Look up any Igala name using our comprehensive database.',
-    icon: 'search',
+    title: 'Names & Meanings',
+    body: 'Search the archive, hear pronunciation, and uncover the stories behind Igala names.',
+    icon: 'menu_book',
     tone: 'bg-primary-fixed text-on-primary-fixed',
   },
   {
-    title: 'Learn',
-    body: 'Read detailed explanations of the cultural and linguistic meanings.',
-    icon: 'menu_book',
+    title: 'Community Visibility',
+    body: 'Map real challenges, publish verified stories, and make overlooked communities seen.',
+    icon: 'campaign',
     tone: 'bg-tertiary-fixed text-on-tertiary-fixed',
   },
   {
-    title: 'Hear',
-    body: 'Listen to authentic audio pronunciations recorded by native speakers.',
-    icon: 'record_voice_over',
+    title: 'Future Language Tools',
+    body: 'Prepare for interactive learning, oral history, and a stronger digital Igala language presence.',
+    icon: 'translate',
     tone: 'bg-secondary-fixed text-on-secondary-fixed',
   },
 ]
 
-const genderOptions = [
-  { label: 'Male', to: '/names?gender=male' },
-  { label: 'Female', to: '/names?gender=female' },
-  { label: 'Unisex', to: '/names?gender=unisex' },
+const featureModules = [
+  {
+    title: 'Igala Names Archive',
+    description: 'Explore authentic Igala names, meanings, pronunciations, and origin stories preserved in a searchable cultural archive.',
+    icon: 'record_voice_over',
+    cta: 'Explore archive',
+    to: '/names',
+    tone: 'bg-primary-fixed text-on-primary-fixed',
+  },
+  {
+    title: 'Community Impact',
+    description: 'Discover and report real community challenges across Igala land and Kogi State through maps, evidence, and local context.',
+    icon: 'public',
+    cta: 'View impact',
+    to: '/impact',
+    tone: 'bg-secondary-fixed text-on-secondary-fixed',
+  },
+  {
+    title: 'Impact Stories',
+    description: 'Read verified human-centered stories from underserved communities and follow how place, dignity, and heritage intersect.',
+    icon: 'article',
+    cta: 'Read stories',
+    to: '/impact/stories',
+    tone: 'bg-tertiary-fixed text-on-tertiary-fixed',
+  },
+  {
+    title: 'Learn Igala',
+    description: 'A future interactive language learning experience inspired by modern educational platforms and rooted in cultural continuity.',
+    icon: 'school',
+    cta: 'See vision',
+    to: '/about',
+    tone: 'bg-primary-container/15 text-primary',
+  },
+  {
+    title: 'Cultural Marketplace',
+    description: 'Discover books, crafts, art, fabrics, fashion, and heritage-centered cultural products through a curated marketplace experience.',
+    icon: 'storefront',
+    cta: 'Enter marketplace',
+    to: '/marketplace',
+    tone: 'bg-secondary-container/40 text-secondary',
+  },
 ]
+
+const heritagePillars = [
+  {
+    title: 'Proverbs & Wisdom',
+    body: 'Preserve sayings, reflections, and symbolic language that carry generations of memory.',
+    icon: 'format_quote',
+    tone: 'bg-tertiary-fixed text-on-tertiary-fixed',
+  },
+  {
+    title: 'Oral History',
+    body: 'Document family stories, ancestral accounts, and the voices that shaped Igala identity.',
+    icon: 'mic',
+    tone: 'bg-primary-fixed text-on-primary-fixed',
+  },
+  {
+    title: 'Festivals & Traditions',
+    body: 'Build a digital record of ceremonies, rites, and seasonal practices that define communal life.',
+    icon: 'celebration',
+    tone: 'bg-secondary-fixed text-on-secondary-fixed',
+  },
+  {
+    title: 'Historical Archives',
+    body: 'Prepare an enduring foundation for texts, timelines, and future heritage collections.',
+    icon: 'history_edu',
+    tone: 'bg-surface-container-high text-secondary',
+  },
+]
+
+function handleSearch() {
+  router.push({
+    path: '/names',
+    query: { q: searchQuery.value },
+  })
+}
+
+onMounted(async () => {
+  try {
+    impactStories.value = await fetchImpactReports({ status: 'approved', limit: 3 })
+  } catch (error) {
+    console.error('Failed to load homepage impact stories:', error)
+  } finally {
+    isStoriesLoading.value = false
+  }
+})
 </script>
 
 <template>
   <main class="flex-grow">
-    <section class="relative flex flex-col items-center px-4 py-16 text-center sm:px-6 sm:py-20 md:py-32">
-      <div class="absolute inset-0 -z-10 bg-surface-container-lowest/80"></div>
-      <img
-        :src="heroImage"
-        alt="Subtle African patterned background texture in earthy tones with warm lighting"
-        class="absolute inset-0 -z-20 h-full w-full object-cover opacity-10"
-      />
+    <HomeHeroSection
+      :hero-image="heroImage"
+      :search-query="searchQuery"
+      :highlights="ecosystemHighlights"
+      @update:search-query="searchQuery = $event"
+      @search="handleSearch"
+    />
 
-      <div class="mx-auto max-w-4xl space-y-6 sm:space-y-8">
-        <h1 class="font-display text-4xl font-bold leading-tight text-primary sm:text-5xl md:text-[48px]">
-          Discover the Meaning Behind Igala Names
-        </h1>
-        <p class="mx-auto max-w-2xl font-body text-base leading-8 text-on-surface-variant sm:text-lg">
-          Explore a rich digital archive of cultural lineage. Understand the profound meanings and hear authentic native pronunciations of Igala names.
-        </p>
+    <EcosystemFeatureSection :features="featureModules" />
 
-        <SearchPanel v-model="searchQuery" @search="handleSearch" />
-
-        <div class="mt-6 flex flex-col justify-center gap-3 sm:mt-8 sm:flex-row sm:flex-wrap sm:gap-4">
-          <AppButton to="/names" class="w-full justify-center sm:w-auto">Explore Names</AppButton>
-          <div class="group relative z-30">
-            <button
-              class="inline-flex w-full items-center justify-center gap-2 rounded border border-secondary px-6 py-3 font-label text-sm font-semibold tracking-[0.05em] text-secondary transition-all duration-300 hover:bg-surface-container hover:shadow-[0_8px_22px_rgb(92_58_33_/_0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary sm:w-auto"
-              type="button"
-            >
-              Gender
-              <span class="material-symbols-outlined text-lg transition-transform duration-300 group-hover:rotate-180 group-focus-within:rotate-180">
-                keyboard_arrow_down
-              </span>
-            </button>
-            <div class="ambient-shadow invisible absolute left-1/2 z-50 mt-2 min-w-40 -translate-x-1/2 overflow-hidden rounded-lg border border-secondary/15 bg-surface-container-lowest p-2 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-1 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-1 group-focus-within:opacity-100">
-              <RouterLink
-                v-for="option in genderOptions"
-                :key="option.label"
-                :to="option.to"
-                class="block rounded px-4 py-3 text-left font-label text-sm font-semibold tracking-[0.05em] text-on-surface-variant transition-colors hover:bg-tertiary-fixed hover:text-on-tertiary-fixed focus:bg-tertiary-fixed focus:text-on-tertiary-fixed focus:outline-none"
-              >
-                {{ option.label }}
-              </RouterLink>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="bg-surface px-4 py-16 sm:px-6 sm:py-20">
+    <section class="bg-surface px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
       <div class="mx-auto max-w-7xl">
-        <div class="mb-10 flex flex-col gap-5 md:mb-12 md:flex-row md:items-end md:justify-between">
-          <div>
-            <h2 class="mb-2 font-headline text-3xl font-semibold text-primary">Featured Names</h2>
-            <p class="font-body text-base leading-relaxed text-on-surface-variant">
-              Discover names steeped in history and tradition.
+        <div class="mb-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <div class="max-w-3xl">
+            <p class="font-label text-xs font-semibold uppercase tracking-[0.18em] text-secondary">Names Spotlight</p>
+            <h2 class="mt-3 font-headline text-3xl font-semibold text-primary sm:text-4xl">Begin with names, then go deeper</h2>
+            <p class="mt-4 font-body text-base leading-8 text-on-surface-variant">
+              The names archive remains a core doorway into lineage, identity, and the stories that hold Igala memory together.
             </p>
           </div>
           <RouterLink class="flex items-center gap-1 font-label text-sm font-semibold tracking-[0.05em] text-tertiary hover:underline" to="/names">
-            View All
+            View Full Archive
             <span class="material-symbols-outlined text-sm">arrow_forward</span>
           </RouterLink>
         </div>
@@ -159,6 +206,28 @@ const genderOptions = [
       </div>
     </section>
 
+    <ImpactStoriesPreviewSection :stories="impactStories" :is-loading="isStoriesLoading" />
+
+    <CulturalHeritageSection :pillars="heritagePillars" />
+
+    <MarketplaceTeaserSection />
+
+    <section class="bg-surface px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <div class="mx-auto max-w-4xl text-center">
+        <p class="font-label text-xs font-semibold uppercase tracking-[0.18em] text-secondary">Shared Future</p>
+        <h2 class="mt-3 font-headline text-3xl font-semibold text-primary sm:text-4xl">
+          Help shape the long-term digital future of Igala culture
+        </h2>
+        <p class="mt-4 font-body text-base leading-8 text-on-surface-variant">
+          Contribute names, report community realities, and support a platform designed to keep identity, language, and memory visible in the modern world.
+        </p>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <AppButton to="/contribute">Contribute a Name</AppButton>
+          <AppButton to="/impact/report" variant="secondary">Report Community Issue</AppButton>
+        </div>
+      </div>
+    </section>
+
     <NameDetailModal
       v-if="selectedName"
       :name="selectedName"
@@ -167,28 +236,5 @@ const genderOptions = [
     />
 
     <HeritageDivider />
-
-    <section class="bg-surface-container-low px-4 py-16 sm:px-6 sm:py-20">
-      <div class="mx-auto max-w-7xl text-center">
-        <h2 class="mb-12 font-headline text-3xl font-semibold text-primary md:mb-16">How to Use the Archive</h2>
-        <div class="relative grid grid-cols-1 gap-6 md:grid-cols-3 md:gap-12">
-          <div class="absolute left-[15%] right-[15%] top-1/2 z-0 hidden h-px -translate-y-1/2 bg-surface-variant md:block"></div>
-
-          <article
-            v-for="step in steps"
-            :key="step.title"
-            class="ambient-shadow relative z-10 flex flex-col items-center rounded-lg bg-surface-container-lowest p-6 sm:p-8"
-          >
-            <div :class="['mb-6 flex h-16 w-16 items-center justify-center rounded-full', step.tone]">
-              <span class="material-symbols-outlined text-3xl">{{ step.icon }}</span>
-            </div>
-            <h3 class="mb-3 font-headline text-2xl font-semibold text-primary">{{ step.title }}</h3>
-            <p class="text-center font-body text-base leading-relaxed text-on-surface-variant">
-              {{ step.body }}
-            </p>
-          </article>
-        </div>
-      </div>
-    </section>
   </main>
 </template>

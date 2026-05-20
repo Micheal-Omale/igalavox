@@ -14,6 +14,10 @@ const isImpactActive = computed(() => {
   return route.path.startsWith('/impact')
 })
 
+const isMarketplaceActive = computed(() => {
+  return route.path.startsWith('/marketplace')
+})
+
 const impactSubLinks = [
   { label: 'Overview & Stats', to: '/impact', description: 'View real-time statistics and summaries', icon: 'insights' },
   { label: 'Interactive Map', to: '/impact/map', description: 'Explore community-reported concerns', icon: 'map' },
@@ -55,6 +59,13 @@ const closeMobileMenu = () => {
           active-class="!border-tertiary !text-primary"
         >
           Archive
+        </RouterLink>
+        <RouterLink
+          to="/marketplace"
+          class="border-b-2 border-transparent pb-1 text-on-surface-variant transition-colors duration-300 hover:text-primary"
+          :class="{ '!border-tertiary !text-primary': isMarketplaceActive }"
+        >
+          Marketplace
         </RouterLink>
 
         <!-- Impact Hover Dropdown -->
@@ -158,6 +169,14 @@ const closeMobileMenu = () => {
           @click="closeMobileMenu"
         >
           Archive
+        </RouterLink>
+        <RouterLink
+          to="/marketplace"
+          class="rounded-lg px-4 py-3 font-label text-sm font-semibold tracking-[0.05em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+          :class="isMarketplaceActive ? '!bg-primary-container/10 !text-primary' : ''"
+          @click="closeMobileMenu"
+        >
+          Marketplace
         </RouterLink>
 
         <!-- Impact Collapsible Accordion on Mobile -->

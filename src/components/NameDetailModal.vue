@@ -445,8 +445,7 @@ onBeforeUnmount(() => {
             @click="isFavorite = !isFavorite"
           >
             <span
-              class="material-symbols-outlined"
-              :style="{ fontVariationSettings: isFavorite ? `'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24` : undefined }"
+              :class="['material-symbols-outlined', { 'filled-symbol': isFavorite }]"
             >
               favorite
             </span>
@@ -499,5 +498,9 @@ onBeforeUnmount(() => {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: #dcdad5;
   border-radius: 10px;
+}
+
+.filled-symbol {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
 }
 </style>

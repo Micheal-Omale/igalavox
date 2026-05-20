@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { supabase, isSupabaseConfigured } from '../services/supabase'
 import { useAuthStore } from '../stores/authStore'
 import BrandLogo from '../components/BrandLogo.vue'
+import AdminNavLinks from '../components/admin/AdminNavLinks.vue'
 import AudioSidePanel from '../components/AudioSidePanel.vue'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
@@ -22,6 +23,7 @@ const currentPage = ref(1)
 const pageSize = 25
 const currentlyPlayingId = ref(null)
 const audioElements = ref({})
+const errorMessage = ref('')
 
 let namesSubscription = null
 
@@ -32,6 +34,7 @@ const completionPercent = computed(() => {
   if (!totalNames.value) return 0
   return Math.round((withAudio.value / totalNames.value) * 100)
 })
+const completionPercentWidth = computed(() => `${completionPercent.value}%`)
 
 const categoryOptions = computed(() => {
   return [...new Set(names.value.map((entry) => entry.category).filter(Boolean))].sort()
@@ -39,7 +42,16 @@ const categoryOptions = computed(() => {
 
 const fetchNames = async (showLoader = true) => {
   if (showLoader) isLoading.value = true
+
+  if (!isSupabaseConfigured) {
+    names.value = []
+    errorMessage.value = 'Supabase is not configured for this deployment.'
+    if (showLoader) isLoading.value = false
+    return
+  }
+
   try {
+    errorMessage.value = ''
     const { data, error } = await supabase
       .from('names')
       .select('*, audio_files(file_url, file_name)')
@@ -48,6 +60,7 @@ const fetchNames = async (showLoader = true) => {
     if (error) throw error
     names.value = (data || []).map(normalizeNameRecord)
   } catch (error) {
+    errorMessage.value = 'Unable to load archive names.'
     console.error('Error fetching names:', error)
   } finally {
     if (showLoader) isLoading.value = false
@@ -173,6 +186,7 @@ const onPanelUpdated = () => {
 }
 
 const removeStoredAudio = async (entry) => {
+  if (!isSupabaseConfigured) return
   if (entry.audioUrl && entry.audioUrl.includes('/storage/v1/object/public/audio/')) {
     const path = entry.audioUrl.split('/audio/')[1]
     if (path) {
@@ -187,6 +201,10 @@ const removeStoredAudio = async (entry) => {
 
 const deleteName = async (entry) => {
   if (!confirm(`Delete "${entry.name}" permanently? This cannot be undone.`)) return
+  if (!isSupabaseConfigured) {
+    alert('Supabase is not configured for this deployment.')
+    return
+  }
 
   try {
     await removeStoredAudio(entry)
@@ -218,27 +236,9 @@ const signOut = async () => {
           </p>
         </div>
 
-        <nav class="flex-1 space-y-0.5 px-3">
-          <RouterLink
-            to="/admin"
-            class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-all"
-            active-class="bg-primary-container/10 text-primary shadow-sm"
-            exact-active-class="bg-primary-container/10 text-primary shadow-sm"
-            :class="[ $route.path === '/admin' ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
-          >
-            <span class="material-symbols-outlined text-[20px]">library_music</span>
-            <span>Audio Archive</span>
-          </RouterLink>
-          <RouterLink
-            to="/admin/impact"
-            class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-all"
-            active-class="bg-primary-container/10 text-primary shadow-sm"
-            :class="[ $route.path.startsWith('/admin/impact') ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
-          >
-            <span class="material-symbols-outlined text-[20px]">campaign</span>
-            <span>Community Impact</span>
-          </RouterLink>
-        </nav>
+        <div class="flex-1 px-3">
+          <AdminNavLinks />
+        </div>
 
         <div class="border-t border-outline-variant/30 px-4 py-4">
           <RouterLink
@@ -303,34 +303,15 @@ const signOut = async () => {
                 <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <nav class="space-y-0.5">
-              <RouterLink
-                to="/admin"
-                class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-colors"
-                active-class="bg-primary-container/10 text-primary"
-                exact-active-class="bg-primary-container/10 text-primary"
-                :class="[ $route.path === '/admin' ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
-                @click="isMobileMenuOpen = false"
-              >
-                <span class="material-symbols-outlined text-[20px]">library_music</span>
-                <span>Audio Archive</span>
-              </RouterLink>
-              <RouterLink
-                to="/admin/impact"
-                class="flex w-full items-center gap-3 rounded-lg px-4 py-3 font-label text-sm font-semibold transition-colors"
-                active-class="bg-primary-container/10 text-primary"
-                :class="[ $route.path.startsWith('/admin/impact') ? '' : 'text-on-surface-variant hover:bg-surface-variant hover:text-primary' ]"
-                @click="isMobileMenuOpen = false"
-              >
-                <span class="material-symbols-outlined text-[20px]">campaign</span>
-                <span>Community Impact</span>
-              </RouterLink>
-            </nav>
+            <AdminNavLinks @navigate="isMobileMenuOpen = false" />
           </aside>
         </div>
 
         <div class="flex-1 px-4 py-5 sm:px-6 lg:px-8">
           <div class="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <p v-if="errorMessage" class="col-span-full rounded-lg border border-error-container bg-error-container/60 px-4 py-3 font-body text-sm text-on-error-container">
+              {{ errorMessage }}
+            </p>
             <div class="rounded-xl border border-outline-variant/25 bg-surface-container-lowest p-4 shadow-sm">
               <div class="flex items-center gap-2">
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-container/15 text-primary">
@@ -372,7 +353,7 @@ const signOut = async () => {
                 <p class="font-display text-2xl font-bold text-secondary">{{ completionPercent }}%</p>
               </div>
               <div class="mt-2 h-1.5 w-full rounded-full bg-outline-variant/20">
-                <div class="h-full rounded-full bg-secondary transition-all duration-500" :style="{ width: completionPercent + '%' }"></div>
+                <div class="admin-completion-bar h-full rounded-full bg-secondary transition-all duration-500"></div>
               </div>
             </div>
           </div>
@@ -479,7 +460,7 @@ const signOut = async () => {
                           ]"
                           :title="currentlyPlayingId === entry.id ? 'Stop' : 'Play'"
                         >
-                          <span class="material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1">
+                          <span class="material-symbols-outlined filled-symbol text-[14px]">
                             {{ currentlyPlayingId === entry.id ? 'stop' : 'play_arrow' }}
                           </span>
                         </button>
@@ -592,3 +573,13 @@ const signOut = async () => {
     />
   </main>
 </template>
+
+<style scoped>
+.admin-completion-bar {
+  width: v-bind(completionPercentWidth);
+}
+
+.filled-symbol {
+  font-variation-settings: "FILL" 1;
+}
+</style>

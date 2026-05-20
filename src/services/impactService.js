@@ -1,5 +1,5 @@
 import localCommunities from '../data/local_govt_area.json'
-import { isSupabaseConfigured, supabase } from './supabase'
+import { isSupabaseConfigured, requireSupabase, supabase } from './supabase'
 
 export const IMPACT_BUCKET = 'impact-reports'
 
@@ -25,6 +25,13 @@ function isMissingTableError(error, tableName) {
   if (!error) return false
   if (error.code === 'PGRST205') return true
   return String(error.message || '').includes(`Could not find the table 'public.${tableName}'`)
+}
+
+function isMissingBucketError(error, bucketName) {
+  if (!error) return false
+  if (error.statusCode === '404') return true
+  return String(error.message || '').toLowerCase().includes(bucketName.toLowerCase())
+    && String(error.message || '').toLowerCase().includes('bucket')
 }
 
 function buildStoragePath(file) {
@@ -156,14 +163,26 @@ export async function fetchImpactStats() {
     }
   }
 
+  const client = requireSupabase()
   const [total, water, electricity, verified] = await Promise.all([
-    supabase.from('reports').select('id', { count: 'exact', head: true }),
-    supabase.from('reports').select('id', { count: 'exact', head: true }).eq('category', 'water'),
-    supabase.from('reports').select('id', { count: 'exact', head: true }).eq('category', 'electricity'),
-    supabase.from('reports').select('community_name').eq('verified', true),
+    client.from('reports').select('id', { count: 'exact', head: true }),
+    client.from('reports').select('id', { count: 'exact', head: true }).eq('category', 'water'),
+    client.from('reports').select('id', { count: 'exact', head: true }).eq('category', 'electricity'),
+    client.from('reports').select('community_name').eq('verified', true),
   ])
 
-  const errors = [total.error, water.error, electricity.error, verified.error].filter(Boolean)
+  const reportErrors = [total.error, water.error, electricity.error, verified.error].filter(Boolean)
+  const missingReportsTable = reportErrors.some((error) => isMissingTableError(error, 'reports'))
+  if (missingReportsTable) {
+    return {
+      totalReports: 0,
+      waterIssues: 0,
+      electricityIssues: 0,
+      verifiedCommunities: 0,
+    }
+  }
+
+  const errors = reportErrors
   if (errors.length) throw errors[0]
 
   return {
@@ -177,7 +196,8 @@ export async function fetchImpactStats() {
 export async function fetchLgas() {
   if (!isSupabaseConfigured) return fallbackLgas
 
-  const { data, error } = await supabase
+  const client = requireSupabase()
+  const { data, error } = await client
     .from('communities')
     .select('lga')
     .order('lga', { ascending: true })
@@ -198,7 +218,8 @@ export async function fetchCommunitiesByLga(lga) {
     return fallbackCommunities.filter((item) => item.lga === lga)
   }
 
-  const { data, error } = await supabase
+  const client = requireSupabase()
+  const { data, error } = await client
     .from('communities')
     .select('id, community_name, lga, latitude, longitude')
     .eq('lga', lga)
@@ -217,7 +238,8 @@ export async function fetchCommunitiesByLga(lga) {
 export async function fetchImpactReports(filters = {}, admin = false) {
   if (!isSupabaseConfigured) return []
 
-  let query = supabase
+  const client = requireSupabase()
+  let query = client
     .from('reports')
     .select('*')
     .order('created_at', { ascending: false })
@@ -233,6 +255,7 @@ export async function fetchImpactReports(filters = {}, admin = false) {
   if (filters.limit) query = query.limit(filters.limit)
 
   const { data, error } = await query
+  if (isMissingTableError(error, 'reports')) return []
   if (error) throw error
   return data || []
 }
@@ -240,7 +263,8 @@ export async function fetchImpactReports(filters = {}, admin = false) {
 export async function fetchImpactStory(id, admin = false) {
   if (!isSupabaseConfigured || !id) return null
 
-  let query = supabase
+  const client = requireSupabase()
+  let query = client
     .from('reports')
     .select('*')
     .eq('id', id)
@@ -251,6 +275,7 @@ export async function fetchImpactStory(id, admin = false) {
   }
 
   const { data, error } = await query
+  if (isMissingTableError(error, 'reports')) return null
   if (error) throw error
   return data
 }
@@ -261,14 +286,18 @@ export async function uploadImpactImage(file) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
   if (!file) return null
 
+  const client = requireSupabase()
   const filePath = buildStoragePath(file)
-  const { data, error } = await supabase.storage
+  const { data, error } = await client.storage
     .from(IMPACT_BUCKET)
     .upload(filePath, file, { cacheControl: '3600', upsert: false })
 
+  if (isMissingBucketError(error, IMPACT_BUCKET)) {
+    throw new Error('Supabase storage bucket "impact-reports" is missing.')
+  }
   if (error) throw error
 
-  const { data: publicData } = supabase.storage.from(IMPACT_BUCKET).getPublicUrl(data.path)
+  const { data: publicData } = client.storage.from(IMPACT_BUCKET).getPublicUrl(data.path)
   return publicData.publicUrl
 }
 
@@ -280,7 +309,8 @@ export async function uploadImpactImages(files = []) {
 export async function submitImpactReport(payload) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
 
-  const { data, error } = await supabase
+  const client = requireSupabase()
+  const { data, error } = await client
     .from('reports')
     .insert(cleanPayload(payload))
     .select()
@@ -293,10 +323,11 @@ export async function submitImpactReport(payload) {
 export async function updateReportStatus(id, status, verified = undefined) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
 
+  const client = requireSupabase()
   const patch = { status }
   if (verified !== undefined) patch.verified = verified
 
-  const { error } = await supabase.from('reports').update(patch).eq('id', id)
+  const { error } = await client.from('reports').update(patch).eq('id', id)
   if (error) throw error
 }
 
@@ -310,6 +341,7 @@ export function getStoragePathFromPublicUrl(url, bucket = IMPACT_BUCKET) {
 export async function deleteImpactReport(report) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
 
+  const client = requireSupabase()
   const reportId = typeof report === 'string' ? report : report?.id
   const reportObject = typeof report === 'object' ? report : null
 
@@ -319,13 +351,13 @@ export async function deleteImpactReport(report) {
       .filter(Boolean)
 
     if (imagePaths.length) {
-      const { error: storageError } = await supabase.storage.from(IMPACT_BUCKET).remove(imagePaths)
+      const { error: storageError } = await client.storage.from(IMPACT_BUCKET).remove(imagePaths)
       if (storageError) {
         console.error('Failed to remove impact report images:', storageError)
       }
     }
   }
 
-  const { error } = await supabase.from('reports').delete().eq('id', reportId)
+  const { error } = await client.from('reports').delete().eq('id', reportId)
   if (error) throw error
 }

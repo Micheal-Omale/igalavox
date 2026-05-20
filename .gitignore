@@ -7,17 +7,19 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies and Build Outputs
 node_modules
 dist
 dist-ssr
-*.local
+
+# Environment Variables
 .env
 .env.*
 !.env.example
+*.local
 
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+# Editor, AI, and IDE directories
+.vscode
 .idea
 .DS_Store
 *.suo
@@ -25,3 +27,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.agents
+.claude
+.kilo

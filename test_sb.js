@@ -27,12 +27,6 @@ async function test() {
   console.log('Testing connection...')
   const { data, error } = await supabase.from('names').select('*').limit(1)
   console.log('Select:', data, error)
-
-  const { error: insertError } = await supabase.from('names').insert({
-    name: 'Test',
-    meaning: 'Test Meaning'
-  })
-  console.log('Insert:', insertError)
 }
 
 test()

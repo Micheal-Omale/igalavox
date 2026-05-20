@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { supabase } from '../services/supabase'
+import { isSupabaseConfigured, requireSupabase, SUPABASE_CONFIG_MESSAGE } from '../services/supabase'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
 const props = defineProps({
@@ -39,6 +39,7 @@ const analyser = ref(null)
 const sourceNode = ref(null)
 
 const hasAudio = computed(() => !!persistedAudioUrl.value)
+const audioProgressWidth = computed(() => `${audioProgress.value}%`)
 
 const audioStatusLabel = computed(() => hasAudio.value ? 'Uploaded' : 'Missing')
 const audioStatusClass = computed(() => hasAudio.value
@@ -114,10 +115,16 @@ const stopRecordingStream = () => {
 }
 
 const uploadAudioFile = async (file) => {
+  if (!isSupabaseConfigured) {
+    showStatus(SUPABASE_CONFIG_MESSAGE, 'error')
+    return
+  }
+
   isUploading.value = true
   showStatus('Uploading audio...', 'info')
 
   try {
+    const supabase = requireSupabase()
     if (persistedAudioId.value || persistedAudioUrl.value) {
       await deleteExistingAudioArtifacts()
     }
@@ -344,6 +351,9 @@ const getStoredAudioPath = (url) => {
 }
 
 const deleteExistingAudioArtifacts = async () => {
+  if (!isSupabaseConfigured) return
+
+  const supabase = requireSupabase()
   const storedPath = getStoredAudioPath(persistedAudioUrl.value)
   if (storedPath) {
     await supabase.storage.from('audio').remove([storedPath])
@@ -374,11 +384,16 @@ const replaceAudio = () => {
 
 const deleteAudio = async () => {
   if (!confirm('Remove pronunciation audio for this name?')) return
+  if (!isSupabaseConfigured) {
+    showStatus(SUPABASE_CONFIG_MESSAGE, 'error')
+    return
+  }
 
   isUploading.value = true
   showStatus('Removing audio...', 'info')
 
   try {
+    const supabase = requireSupabase()
     await deleteExistingAudioArtifacts()
 
     const { error } = await supabase
@@ -508,7 +523,7 @@ watch(normalizedEntry, (entry) => {
             </div>
 
             <div class="mb-3 h-1.5 w-full cursor-pointer rounded-full bg-outline-variant/20" @click="seekAudio">
-              <div class="h-full rounded-full bg-secondary transition-all duration-100" :style="{ width: audioProgress + '%' }"></div>
+              <div class="audio-progress-bar h-full rounded-full bg-secondary transition-all duration-100"></div>
             </div>
 
             <div class="flex items-center justify-between">
@@ -517,7 +532,7 @@ watch(normalizedEntry, (entry) => {
                   @click="togglePlayback"
                   class="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-on-primary shadow-md transition-transform hover:scale-105 active:scale-95"
                 >
-                  <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1">
+                  <span class="material-symbols-outlined filled-symbol text-[20px]">
                     {{ isPlaying ? 'pause' : 'play_arrow' }}
                   </span>
                 </button>
@@ -683,5 +698,13 @@ watch(normalizedEntry, (entry) => {
 
 .animate-slide-in {
   animation: slide-in 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.audio-progress-bar {
+  width: v-bind(audioProgressWidth);
+}
+
+.filled-symbol {
+  font-variation-settings: "FILL" 1;
 }
 </style>

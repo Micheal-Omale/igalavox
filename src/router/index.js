@@ -57,6 +57,16 @@ const router = createRouter({
       component: () => import('../views/ImpactStoryDetailView.vue')
     },
     {
+      path: '/marketplace',
+      name: 'marketplace',
+      component: () => import('../views/MarketplaceView.vue')
+    },
+    {
+      path: '/marketplace/:slug',
+      name: 'marketplace-detail',
+      component: () => import('../views/MarketplaceProductDetailView.vue')
+    },
+    {
       path: '/signup',
       redirect: '/contribute'
     },
@@ -80,6 +90,12 @@ const router = createRouter({
       path: '/admin/impact',
       name: 'admin-reports',
       component: () => import('../views/AdminReportsView.vue'),
+      meta: { hideShell: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/marketplace',
+      name: 'admin-marketplace',
+      component: () => import('../views/MarketplaceDashboardView.vue'),
       meta: { hideShell: true, requiresAdmin: true }
     },
     {

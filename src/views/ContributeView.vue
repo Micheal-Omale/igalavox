@@ -120,6 +120,20 @@ const submitContribution = () => {
               <input v-model="form.meaning" :class="fieldClasses" placeholder="Name meaning" type="text" />
             </label>
 
+            <label class="block space-y-2">
+              <span class="block font-label text-sm font-semibold tracking-[0.05em] text-on-surface">Pronunciation</span>
+              <input v-model="form.pronunciation" :class="fieldClasses" placeholder="e.g. Oh-joon-oo-gwah" type="text" />
+            </label>
+
+            <label class="block space-y-2">
+              <span class="block font-label text-sm font-semibold tracking-[0.05em] text-on-surface">Story or Context</span>
+              <textarea
+                v-model="form.story"
+                :class="[fieldClasses, 'min-h-32 resize-y']"
+                placeholder="Family usage, proverb, historical note, or why this name matters."
+              ></textarea>
+            </label>
+
             <AppButton as="button" type="submit" class="w-full py-4">
               Contribute
               <span class="material-symbols-outlined text-[18px]">send</span>

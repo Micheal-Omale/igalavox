@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { supabase } from '../services/supabase'
+import { requireSupabase, SUPABASE_CONFIG_MESSAGE, isSupabaseConfigured } from '../services/supabase'
 
 export function useStorage() {
   const loading = ref(false)
@@ -8,9 +8,18 @@ export function useStorage() {
   const uploadAudio = async (file, fileName) => {
     loading.value = true
     error.value = null
+
+    if (!isSupabaseConfigured) {
+      const err = new Error(SUPABASE_CONFIG_MESSAGE)
+      error.value = err
+      loading.value = false
+      return { data: null, err }
+    }
+
+    const supabase = requireSupabase()
     const filePath = `${Date.now()}_${fileName}`
     const { data, error: err } = await supabase.storage.from('audio').upload(filePath, file)
-    
+
     if (err) {
       error.value = err
       loading.value = false

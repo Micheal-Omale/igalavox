@@ -1,11 +1,12 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { supabase } from '../services/supabase'
+import fallbackNames from '../data/igala_names_structured.json'
 import HeritageDivider from '../components/HeritageDivider.vue'
 import NameCard from '../components/NameCard.vue'
 import NameDetailModal from '../components/NameDetailModal.vue'
 import SearchPanel from '../components/SearchPanel.vue'
+import { isSupabaseConfigured, requireSupabase } from '../services/supabase'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
 const route = useRoute()
@@ -17,6 +18,7 @@ const isLoading = ref(true)
 const isLoadingMore = ref(false)
 const isDetailLoading = ref(false)
 const hasMoreNames = ref(false)
+const errorMessage = ref('')
 let searchTimer = null
 
 const SUMMARY_CACHE_KEY = 'names-view-summary-cache-v2'
@@ -66,10 +68,13 @@ const writeSummaryCache = (rows) => {
 }
 
 const visibleNames = computed(() => names.value)
+const hasActiveSearch = computed(() => Boolean(searchQuery.value.trim()))
+const shouldShowEmptyState = computed(() => !isLoading.value && visibleNames.value.length === 0)
 
 const buildNamesQuery = (from, to) => {
   const q = searchQuery.value.trim()
-  let query = supabase
+  const queryClient = requireSupabase()
+  let query = queryClient
     .from('names')
     .select(SUMMARY_SELECT)
     .order('name', { ascending: true })
@@ -86,8 +91,21 @@ const buildNamesQuery = (from, to) => {
 const fetchNames = async ({ reset = true } = {}) => {
   if (reset) isLoading.value = true
   else isLoadingMore.value = true
+  errorMessage.value = ''
 
   try {
+    if (!isSupabaseConfigured) {
+      hasMoreNames.value = false
+      names.value = fallbackNames
+        .filter((item) => {
+          const q = searchQuery.value.trim().toLowerCase()
+          if (!q) return true
+          return [item.name, item.meaning, item.story, item.category].some((value) => String(value || '').toLowerCase().includes(q))
+        })
+        .map(normalizeNameRecord)
+      return
+    }
+
     const cachedRows = reset && !searchQuery.value.trim() ? readSummaryCache() : null
     if (cachedRows) {
       names.value = cachedRows.map(normalizeNameRecord)
@@ -113,6 +131,9 @@ const fetchNames = async ({ reset = true } = {}) => {
 
     hasMoreNames.value = (data || []).length === PAGE_SIZE
   } catch (error) {
+    errorMessage.value = 'Unable to load archive from Supabase. Showing available fallback records.'
+    names.value = fallbackNames.map(normalizeNameRecord)
+    hasMoreNames.value = false
     console.error('Error fetching names:', error)
   } finally {
     isLoading.value = false
@@ -122,9 +143,12 @@ const fetchNames = async ({ reset = true } = {}) => {
 
 const openName = async (item) => {
   selectedName.value = item
+  if (!isSupabaseConfigured || !item.id) return
+
   isDetailLoading.value = true
 
   try {
+    const supabase = requireSupabase()
     const { data, error } = await supabase
       .from('names')
       .select('*, audio_files(file_url, file_name)')
@@ -199,10 +223,14 @@ watch(searchQuery, () => {
             {{ isLoadingMore ? 'Loading...' : 'Load More Names' }}
           </button>
         </div>
-        <div v-else class="py-20 text-center">
+        <p v-if="errorMessage" class="mt-8 text-center font-body text-sm text-clay">{{ errorMessage }}</p>
+        <div v-if="shouldShowEmptyState" class="py-20 text-center">
           <span class="material-symbols-outlined mb-4 text-6xl text-outline-variant">search_off</span>
-          <p class="font-display text-2xl text-on-surface-variant">No names found matching your search.</p>
+          <p class="font-display text-2xl text-on-surface-variant">
+            {{ hasActiveSearch ? 'No names found matching your search.' : 'No names available right now.' }}
+          </p>
           <button 
+            v-if="hasActiveSearch"
             @click="searchQuery = ''" 
             class="mt-4 text-primary underline font-label font-semibold"
           >

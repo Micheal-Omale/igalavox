@@ -177,3 +177,84 @@ USING (
   AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
 );
 
+-- Marketplace
+CREATE TABLE IF NOT EXISTS vendors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  display_name TEXT,
+  bio TEXT,
+  avatar_url TEXT,
+  verified BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title TEXT NOT NULL,
+  slug TEXT UNIQUE NOT NULL,
+  description TEXT,
+  cultural_story TEXT,
+  category TEXT,
+  vendor_name TEXT,
+  vendor_whatsapp TEXT,
+  vendor_email TEXT,
+  price NUMERIC DEFAULT 0,
+  inventory_count INTEGER DEFAULT 0,
+  featured BOOLEAN DEFAULT false,
+  published BOOLEAN DEFAULT true,
+  image_urls TEXT[],
+  materials_used TEXT,
+  availability TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_whatsapp TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS vendor_email TEXT;
+
+ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read products" ON products;
+DROP POLICY IF EXISTS "Admins manage products" ON products;
+DROP POLICY IF EXISTS "Public read vendors" ON vendors;
+DROP POLICY IF EXISTS "Admins manage vendors" ON vendors;
+
+CREATE POLICY "Public read products" ON products FOR SELECT TO public USING (published = true);
+CREATE POLICY "Admins manage products" ON products FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
+CREATE POLICY "Public read vendors" ON vendors FOR SELECT TO public USING (true);
+CREATE POLICY "Admins manage vendors" ON vendors FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
+CREATE INDEX IF NOT EXISTS idx_products_slug ON products(slug);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+CREATE INDEX IF NOT EXISTS idx_products_vendor_name ON products(vendor_name);
+CREATE INDEX IF NOT EXISTS idx_products_featured ON products(featured);
+
+INSERT INTO storage.buckets (id, name, public) VALUES ('marketplace-products', 'marketplace-products', true)
+ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
+
+DROP POLICY IF EXISTS "Public read marketplace products" ON storage.objects;
+DROP POLICY IF EXISTS "Admins upload marketplace products" ON storage.objects;
+DROP POLICY IF EXISTS "Admins update marketplace products" ON storage.objects;
+DROP POLICY IF EXISTS "Admins delete marketplace products" ON storage.objects;
+
+CREATE POLICY "Public read marketplace products" ON storage.objects FOR SELECT TO public USING (bucket_id = 'marketplace-products');
+CREATE POLICY "Admins upload marketplace products" ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (
+  bucket_id = 'marketplace-products'
+  AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
+CREATE POLICY "Admins update marketplace products" ON storage.objects FOR UPDATE TO authenticated
+USING (
+  bucket_id = 'marketplace-products'
+  AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
+CREATE POLICY "Admins delete marketplace products" ON storage.objects FOR DELETE TO authenticated
+USING (
+  bucket_id = 'marketplace-products'
+  AND EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')
+);
+

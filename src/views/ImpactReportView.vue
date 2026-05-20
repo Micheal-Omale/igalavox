@@ -20,6 +20,8 @@ const form = ref({
   lga: '',
   communityName: '',
   nearbyLandmark: '',
+  marketName: '',
+  schoolOrHospitalNearby: '',
   localDescription: '',
   latitude: null,
   longitude: null,
@@ -143,6 +145,8 @@ function handleImageChange(event) {
 function buildDescription() {
   return buildLocationDescription({
     nearbyLandmark: form.value.nearbyLandmark,
+    marketName: form.value.marketName,
+    schoolOrHospitalNearby: form.value.schoolOrHospitalNearby,
     localDescription: form.value.localDescription,
     description: form.value.description,
   })
@@ -164,6 +168,8 @@ function resetForm() {
     lga: '',
     communityName: '',
     nearbyLandmark: '',
+    marketName: '',
+    schoolOrHospitalNearby: '',
     localDescription: '',
     latitude: null,
     longitude: null,
@@ -215,13 +221,31 @@ async function handleSubmit() {
 
 onMounted(loadLgas)
 
-function categoryCardStyle(category, selected) {
-  const color = getCategoryMeta(category.key).marker
+function categoryAccentClass(categoryKey) {
   return {
-    borderColor: selected ? color : undefined,
-    backgroundColor: selected ? `${color}14` : undefined,
-    boxShadow: selected ? `0 0 0 2px ${color}24` : undefined,
-  }
+    water: 'impact-category-water',
+    electricity: 'impact-category-electricity',
+    roads: 'impact-category-roads',
+    healthcare: 'impact-category-healthcare',
+  }[categoryKey] || 'impact-category-default'
+}
+
+function categoryIconClass(categoryKey) {
+  return {
+    water: 'bg-blue-600',
+    electricity: 'bg-yellow-600',
+    roads: 'bg-clay',
+    healthcare: 'bg-emerald-700',
+  }[categoryKey] || 'bg-primary'
+}
+
+function categorySelectedIconClass(categoryKey) {
+  return {
+    water: 'border-blue-600 text-blue-600',
+    electricity: 'border-yellow-600 text-yellow-600',
+    roads: 'border-clay text-clay',
+    healthcare: 'border-emerald-700 text-emerald-700',
+  }[categoryKey] || 'border-primary text-primary'
 }
 
 watch(
@@ -356,6 +380,26 @@ onBeforeUnmount(() => {
                   />
                 </label>
 
+                <label class="block">
+                  <span class="font-label text-sm font-semibold text-on-surface-variant">Nearby market</span>
+                  <input
+                    v-model="form.marketName"
+                    class="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface outline-none transition focus:border-secondary focus:ring-1 focus:ring-secondary"
+                    placeholder="Ejule market, Anyigba market"
+                    type="text"
+                  />
+                </label>
+
+                <label class="block">
+                  <span class="font-label text-sm font-semibold text-on-surface-variant">Nearby school or hospital</span>
+                  <input
+                    v-model="form.schoolOrHospitalNearby"
+                    class="mt-2 w-full rounded-lg border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface outline-none transition focus:border-secondary focus:ring-1 focus:ring-secondary"
+                    placeholder="Primary school, health centre, clinic"
+                    type="text"
+                  />
+                </label>
+
                 <label class="block md:col-span-2">
                   <span class="font-label text-sm font-semibold text-on-surface-variant">Local description</span>
                   <input
@@ -378,25 +422,22 @@ onBeforeUnmount(() => {
                   :class="[
                     'group rounded-2xl border p-4 text-left transition-all duration-300',
                     form.category === category.key
-                      ? ''
+                      ? categoryAccentClass(category.key)
                       : 'border-outline-variant/60 bg-surface hover:border-secondary/60 hover:-translate-y-0.5',
                   ]"
-                  :style="categoryCardStyle(category, form.category === category.key)"
                   @click="form.category = category.key"
                 >
                   <div class="flex items-start justify-between gap-3">
                     <span
-                      class="flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm"
-                      :style="{ backgroundColor: getCategoryMeta(category.key).marker }"
+                      :class="['flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-sm', categoryIconClass(category.key)]"
                     >
                       <span class="material-symbols-outlined text-[24px]">{{ category.icon }}</span>
                     </span>
                     <span
                       :class="[
                         'inline-flex h-8 w-8 items-center justify-center rounded-full border bg-white/90 transition-all',
-                        form.category === category.key ? 'text-primary' : 'border-outline-variant/60 text-outline',
+                        form.category === category.key ? categorySelectedIconClass(category.key) : 'border-outline-variant/60 text-outline',
                       ]"
-                      :style="form.category === category.key ? { borderColor: getCategoryMeta(category.key).marker, color: getCategoryMeta(category.key).marker } : undefined"
                     >
                       <span class="material-symbols-outlined text-[17px]">{{ form.category === category.key ? 'check' : 'radio_button_unchecked' }}</span>
                     </span>
@@ -476,3 +517,35 @@ onBeforeUnmount(() => {
     </div>
   </main>
 </template>
+
+<style scoped>
+.impact-category-default {
+  border-color: rgb(11 61 46 / 0.42);
+  background: rgb(11 61 46 / 0.08);
+  box-shadow: 0 0 0 2px rgb(11 61 46 / 0.12);
+}
+
+.impact-category-water {
+  border-color: rgb(37 99 235 / 0.6);
+  background: rgb(37 99 235 / 0.08);
+  box-shadow: 0 0 0 2px rgb(37 99 235 / 0.12);
+}
+
+.impact-category-electricity {
+  border-color: rgb(202 138 4 / 0.6);
+  background: rgb(202 138 4 / 0.08);
+  box-shadow: 0 0 0 2px rgb(202 138 4 / 0.12);
+}
+
+.impact-category-roads {
+  border-color: rgb(164 74 63 / 0.6);
+  background: rgb(164 74 63 / 0.08);
+  box-shadow: 0 0 0 2px rgb(164 74 63 / 0.12);
+}
+
+.impact-category-healthcare {
+  border-color: rgb(4 120 87 / 0.6);
+  background: rgb(4 120 87 / 0.08);
+  box-shadow: 0 0 0 2px rgb(4 120 87 / 0.12);
+}
+</style>
