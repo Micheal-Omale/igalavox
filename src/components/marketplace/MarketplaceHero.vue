@@ -1,4 +1,5 @@
 <script setup>
+import achiImage from '@/assets/pics/achi.jpg'
 import AppButton from '../AppButton.vue'
 
 defineProps({
@@ -54,7 +55,7 @@ defineProps({
               alt="Igala textile craft"
               class="h-72 w-full object-cover sm:h-[26rem]"
               loading="eager"
-              src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80"
+              :src="achiImage"
             />
             <div class="border-t border-outline-variant/15 bg-surface-container-low px-5 py-4">
               <p class="font-label text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">Featured Craft</p>
