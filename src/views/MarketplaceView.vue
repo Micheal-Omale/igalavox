@@ -1,6 +1,5 @@
 <script setup>
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
-import CollectionCard from '../components/marketplace/CollectionCard.vue'
 import MarketplaceFilters from '../components/marketplace/MarketplaceFilters.vue'
 import MarketplaceHero from '../components/marketplace/MarketplaceHero.vue'
 import ProductCard from '../components/marketplace/ProductCard.vue'
@@ -15,27 +14,6 @@ const errorMessage = ref('')
 const products = ref([])
 const vendors = ref([])
 let searchDebounceTimer = null
-
-const collectionCards = [
-  {
-    eyebrow: 'Textiles',
-    title: 'Traditional Fabrics',
-    description: 'Ceremonial cloth, woven textures, and wardrobe pieces that carry place and prestige.',
-    image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    eyebrow: 'Object Culture',
-    title: 'Handmade Crafts',
-    description: 'Functional and decorative pieces shaped by touch, patience, and indigenous making.',
-    image: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    eyebrow: 'Knowledge',
-    title: 'Books & Archives',
-    description: 'Reading materials and cultural references that help memory travel across generations.',
-    image: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80',
-  },
-]
 
 const featuredProducts = computed(() => products.value.filter((item) => item.featured).slice(0, 3))
 const artisanCount = computed(() => new Set(products.value.map((item) => item.vendor_name).filter(Boolean)).size)
@@ -93,19 +71,6 @@ onBeforeUnmount(() => {
 <template>
   <main class="bg-background text-on-background">
     <MarketplaceHero :artisan-count="artisanCount" :featured-count="products.length" />
-
-    <section class="bg-surface px-4 py-16 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-7xl">
-        <div class="mb-8 max-w-3xl">
-          <p class="font-label text-xs font-semibold uppercase tracking-[0.18em] text-secondary">Featured Collections</p>
-          <h2 class="mt-3 font-headline text-3xl font-semibold text-primary sm:text-4xl">A curated entry into craftsmanship, memory, and modern cultural ownership</h2>
-        </div>
-
-        <div class="grid gap-6 lg:grid-cols-3">
-          <CollectionCard v-for="collection in collectionCards" :key="collection.title" :collection="collection" />
-        </div>
-      </div>
-    </section>
 
     <section id="marketplace-grid" class="bg-surface-container-low px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
       <div class="mx-auto max-w-7xl">
