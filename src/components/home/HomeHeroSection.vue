@@ -52,7 +52,7 @@ defineEmits(['update:searchQuery', 'search'])
         <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           <AppButton to="/names">Explore Names</AppButton>
           <AppButton to="/impact" variant="secondary">Community Impact</AppButton>
-          <AppButton href="#language-lab" variant="secondary">
+          <AppButton to="/learn-igala" variant="secondary">
             <span class="material-symbols-outlined text-[18px]">language</span>
             Learn Igala
           </AppButton>

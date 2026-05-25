@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import AppButton from '../components/AppButton.vue'
+import ImpactCommunityEvidenceSection from '../components/impact/ImpactCommunityEvidenceSection.vue'
 import ImpactMap from '../components/ImpactMap.vue'
 import { fetchImpactReports, fetchImpactStats, hasCoordinates } from '../services/impactService'
 
@@ -60,6 +61,8 @@ onMounted(async () => {
         </div>
       </div>
     </section>
+
+    <ImpactCommunityEvidenceSection />
 
     <section class="bg-surface px-4 py-14 sm:px-6">
       <div class="mx-auto max-w-7xl">

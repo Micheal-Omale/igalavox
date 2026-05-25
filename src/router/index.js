@@ -26,6 +26,11 @@ const router = createRouter({
       component: () => import('../views/NamesView.vue')
     },
     {
+      path: '/learn-igala',
+      name: 'learn-igala',
+      component: () => import('../views/LearnIgalaView.vue')
+    },
+    {
       path: '/contribute',
       name: 'contribute',
       component: () => import('../views/ContributeView.vue'),
@@ -55,6 +60,16 @@ const router = createRouter({
       path: '/impact/stories/:id',
       name: 'impact-story-detail',
       component: () => import('../views/ImpactStoryDetailView.vue')
+    },
+    {
+      path: '/impact/evidence',
+      name: 'impact-evidence',
+      component: () => import('../views/CommunityEvidenceView.vue')
+    },
+    {
+      path: '/impact/evidence/submit',
+      name: 'submit-evidence',
+      component: () => import('../views/SubmitEvidenceView.vue')
     },
     {
       path: '/marketplace',
@@ -96,6 +111,12 @@ const router = createRouter({
       path: '/admin/marketplace',
       name: 'admin-marketplace',
       component: () => import('../views/MarketplaceDashboardView.vue'),
+      meta: { hideShell: true, requiresAdmin: true }
+    },
+    {
+      path: '/admin/evidence',
+      name: 'admin-evidence',
+      component: () => import('../views/AdminEvidenceView.vue'),
       meta: { hideShell: true, requiresAdmin: true }
     },
     {

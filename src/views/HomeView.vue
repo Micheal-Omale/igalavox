@@ -94,20 +94,20 @@ const featureModules = [
     tone: 'bg-secondary-fixed text-on-secondary-fixed',
   },
   {
+    title: 'Learn Igala',
+    description: 'A future interactive language learning experience inspired by modern educational platforms and rooted in cultural continuity.',
+    icon: 'school',
+    cta: 'Coming soon',
+    to: '/learn-igala',
+    tone: 'bg-primary-container/15 text-primary',
+  },
+  {
     title: 'Impact Stories',
     description: 'Read verified human-centered stories from underserved communities and follow how place, dignity, and heritage intersect.',
     icon: 'article',
     cta: 'Read stories',
     to: '/impact/stories',
     tone: 'bg-tertiary-fixed text-on-tertiary-fixed',
-  },
-  {
-    title: 'Learn Igala',
-    description: 'A future interactive language learning experience inspired by modern educational platforms and rooted in cultural continuity.',
-    icon: 'school',
-    cta: 'See vision',
-    to: '/about',
-    tone: 'bg-primary-container/15 text-primary',
   },
   {
     title: 'Cultural Marketplace',

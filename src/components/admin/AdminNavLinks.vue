@@ -7,6 +7,7 @@ const route = useRoute()
 const navItems = [
   { label: 'Audio Archive', to: '/admin', icon: 'library_music', exact: true },
   { label: 'Community Impact', to: '/admin/impact', icon: 'campaign', exact: false },
+  { label: 'Evidence', to: '/admin/evidence', icon: 'video_library', exact: false },
   { label: 'Marketplace', to: '/admin/marketplace', icon: 'storefront', exact: false },
 ]
 

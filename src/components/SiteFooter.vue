@@ -16,7 +16,7 @@ const footerGroups = [
     title: 'Language',
     links: [
       { label: 'Explore Names', to: '/names' },
-      { label: 'Learn Igala', to: '/about' },
+      { label: 'Learn Igala', to: '/learn-igala' },
       { label: 'Pronunciation Archive', to: '/names' },
     ],
   },

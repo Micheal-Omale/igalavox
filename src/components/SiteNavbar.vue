@@ -1,14 +1,12 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import AppButton from './AppButton.vue'
 import BrandLogo from './BrandLogo.vue'
 
-const router = useRouter()
 const route = useRoute()
 const isMobileMenuOpen = ref(false)
 const isMobileImpactOpen = ref(route.path.startsWith('/impact'))
-const searchQuery = ref('')
 
 const isImpactActive = computed(() => {
   return route.path.startsWith('/impact')
@@ -22,17 +20,9 @@ const impactSubLinks = [
   { label: 'Overview & Stats', to: '/impact', description: 'View real-time statistics and summaries', icon: 'insights' },
   { label: 'Interactive Map', to: '/impact/map', description: 'Explore community-reported concerns', icon: 'map' },
   { label: 'Stories Feed', to: '/impact/stories', description: 'Read verified cultural & impact stories', icon: 'article' },
+  { label: 'Community Evidence', to: '/impact/evidence', description: 'Watch community media and submissions', icon: 'video_library' },
   { label: 'Report an Issue', to: '/impact/report', description: 'Submit a new report from your area', icon: 'campaign' },
 ]
-
-const handleSearch = () => {
-  if (!searchQuery.value.trim()) return
-  router.push({
-    path: '/names',
-    query: { q: searchQuery.value }
-  })
-  isMobileMenuOpen.value = false
-}
 
 const closeMobileMenu = () => {
   isMobileMenuOpen.value = false
@@ -60,14 +50,6 @@ const closeMobileMenu = () => {
         >
           Archive
         </RouterLink>
-        <RouterLink
-          to="/marketplace"
-          class="border-b-2 border-transparent pb-1 text-on-surface-variant transition-colors duration-300 hover:text-primary"
-          :class="{ '!border-tertiary !text-primary': isMarketplaceActive }"
-        >
-          Marketplace
-        </RouterLink>
-
         <!-- Impact Hover Dropdown -->
         <div class="relative group py-2">
           <RouterLink
@@ -99,6 +81,14 @@ const closeMobileMenu = () => {
           </div>
         </div>
 
+        <RouterLink
+          to="/marketplace"
+          class="border-b-2 border-transparent pb-1 text-on-surface-variant transition-colors duration-300 hover:text-primary"
+          :class="{ '!border-tertiary !text-primary': isMarketplaceActive }"
+        >
+          Marketplace
+        </RouterLink>
+
         <!-- About & Contribute -->
         <RouterLink
           to="/about"
@@ -117,15 +107,7 @@ const closeMobileMenu = () => {
       </nav>
 
       <div class="hidden items-center gap-4 md:flex">
-        <form @submit.prevent="handleSearch" class="relative block">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-          <input
-            v-model="searchQuery"
-            class="w-56 rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
-            placeholder="Search names..."
-            type="search"
-          />
-        </form>
+        <AppButton to="/learn-igala" variant="primary">Learn Igala</AppButton>
         <AppButton to="/signin" variant="ghost">Sign in</AppButton>
       </div>
 
@@ -170,15 +152,6 @@ const closeMobileMenu = () => {
         >
           Archive
         </RouterLink>
-        <RouterLink
-          to="/marketplace"
-          class="rounded-lg px-4 py-3 font-label text-sm font-semibold tracking-[0.05em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
-          :class="isMarketplaceActive ? '!bg-primary-container/10 !text-primary' : ''"
-          @click="closeMobileMenu"
-        >
-          Marketplace
-        </RouterLink>
-
         <!-- Impact Collapsible Accordion on Mobile -->
         <div class="w-full">
           <button
@@ -208,6 +181,15 @@ const closeMobileMenu = () => {
         </div>
 
         <RouterLink
+          to="/marketplace"
+          class="rounded-lg px-4 py-3 font-label text-sm font-semibold tracking-[0.05em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
+          :class="isMarketplaceActive ? '!bg-primary-container/10 !text-primary' : ''"
+          @click="closeMobileMenu"
+        >
+          Marketplace
+        </RouterLink>
+
+        <RouterLink
           to="/about"
           class="rounded-lg px-4 py-3 font-label text-sm font-semibold tracking-[0.05em] text-on-surface-variant transition-colors hover:bg-surface-container hover:text-primary"
           active-class="!bg-primary-container/10 !text-primary"
@@ -224,15 +206,14 @@ const closeMobileMenu = () => {
           Contribute
         </RouterLink>
 
-        <form @submit.prevent="handleSearch" class="relative mt-3 w-full max-w-64 self-center">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline">search</span>
-          <input
-            v-model="searchQuery"
-            class="w-full rounded-full border border-outline-variant bg-surface-container-low py-2 pl-10 pr-4 font-body text-base text-on-surface outline-none transition focus:border-tertiary focus:ring-1 focus:ring-tertiary"
-            placeholder="Search names..."
-            type="search"
-          />
-        </form>
+        <AppButton
+          to="/learn-igala"
+          variant="primary"
+          class="mt-3 w-full max-w-64 self-center"
+          @click="closeMobileMenu"
+        >
+          Learn Igala
+        </AppButton>
       </nav>
     </div>
   </header>
