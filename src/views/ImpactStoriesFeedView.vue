@@ -1,11 +1,14 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import AppButton from '../components/AppButton.vue'
+import ImpactStoryCardMedia from '../components/impact/ImpactStoryCardMedia.vue'
+import { fetchEvidenceForReport } from '../services/evidenceService'
 import { fetchImpactReports, getCategoryMeta } from '../services/impactService'
 
 const stories = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
+const storyEvidenceMap = ref({})
 
 function formatDate(value) {
   if (!value) return ''
@@ -20,6 +23,15 @@ function excerpt(text, limit = 150) {
 onMounted(async () => {
   try {
     stories.value = await fetchImpactReports({ status: 'approved' })
+
+    const evidenceEntries = await Promise.all(
+      stories.value.map(async (story) => {
+        const linkedEvidence = await fetchEvidenceForReport(story.id)
+        return [story.id, linkedEvidence[0] || null]
+      })
+    )
+
+    storyEvidenceMap.value = Object.fromEntries(evidenceEntries)
   } catch (error) {
     errorMessage.value = 'Unable to load impact stories.'
     console.error('Failed to fetch impact stories:', error)
@@ -55,13 +67,7 @@ onMounted(async () => {
         </div>
         <div v-else class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <article v-for="story in stories" :key="story.id" class="ambient-shadow overflow-hidden rounded-xl border border-outline-variant/25 bg-surface-container-lowest">
-            <div class="h-48 bg-surface-container">
-              <img v-if="story.image_urls?.length" :src="story.image_urls[0]" :alt="story.community_name || 'Community Impact'" class="h-full w-full object-cover" loading="lazy" />
-              <img v-else-if="story.image_url" :src="story.image_url" :alt="story.community_name || 'Community Impact'" class="h-full w-full object-cover" loading="lazy" />
-              <div v-else class="flex h-full items-center justify-center text-outline">
-                <span class="material-symbols-outlined text-5xl">{{ getCategoryMeta(story.category).icon }}</span>
-              </div>
-            </div>
+            <ImpactStoryCardMedia :story="story" :evidence="storyEvidenceMap[story.id]" />
             <div class="p-5">
               <div class="mb-3 flex items-center justify-between gap-3 text-xs text-on-surface-variant">
                 <span class="inline-flex items-center gap-1 font-label font-semibold text-secondary">

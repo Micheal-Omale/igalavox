@@ -73,6 +73,48 @@ ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
 ALTER TABLE reports DROP CONSTRAINT IF EXISTS reports_image_urls_max_3;
 ALTER TABLE reports ADD CONSTRAINT reports_image_urls_max_3 CHECK (image_urls IS NULL OR cardinality(image_urls) <= 3);
 
+CREATE TABLE IF NOT EXISTS community_evidence (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  report_id UUID REFERENCES reports(id) ON DELETE SET NULL,
+  title TEXT,
+  description TEXT NOT NULL,
+  media_url TEXT NOT NULL,
+  media_type TEXT NOT NULL CHECK (media_type IN ('youtube', 'tiktok', 'facebook')),
+  category TEXT DEFAULT 'general',
+  community_name TEXT,
+  lga TEXT,
+  approved BOOLEAN DEFAULT false,
+  rejected BOOLEAN DEFAULT false,
+  featured BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS report_id UUID;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS media_url TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS media_type TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS community_name TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS lga TEXT;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS approved BOOLEAN DEFAULT false;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS rejected BOOLEAN DEFAULT false;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS featured BOOLEAN DEFAULT false;
+ALTER TABLE community_evidence ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'community_evidence_report_id_fkey'
+  ) THEN
+    ALTER TABLE community_evidence
+      ADD CONSTRAINT community_evidence_report_id_fkey
+      FOREIGN KEY (report_id) REFERENCES reports(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
 -- RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audio_files ENABLE ROW LEVEL SECURITY;
@@ -80,6 +122,7 @@ ALTER TABLE names ENABLE ROW LEVEL SECURITY;
 ALTER TABLE submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE communities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE community_evidence ENABLE ROW LEVEL SECURITY;
 
 -- Policies for Admins (all operations) - temporarily PUBLIC for MVP without Auth
 DROP POLICY IF EXISTS "Admins full access" ON profiles;
@@ -109,6 +152,9 @@ DROP POLICY IF EXISTS "Admins manage communities" ON communities;
 DROP POLICY IF EXISTS "Public read approved reports" ON reports;
 DROP POLICY IF EXISTS "Public submit pending reports" ON reports;
 DROP POLICY IF EXISTS "Admins manage reports" ON reports;
+DROP POLICY IF EXISTS "Public read approved evidence" ON community_evidence;
+DROP POLICY IF EXISTS "Public submit pending evidence" ON community_evidence;
+DROP POLICY IF EXISTS "Admins manage evidence" ON community_evidence;
 
 CREATE POLICY "Public read communities" ON communities FOR SELECT TO public USING (true);
 CREATE POLICY "Admins manage communities" ON communities FOR ALL TO authenticated
@@ -123,6 +169,14 @@ CREATE POLICY "Admins manage reports" ON reports FOR ALL TO authenticated
 USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
 WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
 
+CREATE POLICY "Public read approved evidence" ON community_evidence FOR SELECT TO public
+USING (approved = true);
+CREATE POLICY "Public submit pending evidence" ON community_evidence FOR INSERT TO public
+WITH CHECK (approved = false AND featured = false AND rejected = false);
+CREATE POLICY "Admins manage evidence" ON community_evidence FOR ALL TO authenticated
+USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'))
+WITH CHECK (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin'));
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_names_name ON names(name);
 CREATE INDEX IF NOT EXISTS idx_communities_lga ON communities(lga);
@@ -130,6 +184,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_communities_name_lga ON communities(commun
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE INDEX IF NOT EXISTS idx_reports_category ON reports(category);
 CREATE INDEX IF NOT EXISTS idx_reports_lga ON reports(lga);
+CREATE INDEX IF NOT EXISTS idx_community_evidence_report_id ON community_evidence(report_id);
+CREATE INDEX IF NOT EXISTS idx_community_evidence_approved ON community_evidence(approved);
+CREATE INDEX IF NOT EXISTS idx_community_evidence_featured ON community_evidence(featured);
 
 INSERT INTO communities (community_name, lga, latitude, longitude) VALUES
   ('Idah', 'Idah', 7.1135, 6.7385),

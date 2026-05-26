@@ -8,7 +8,7 @@ const evidenceSignals = [
   },
   {
     title: 'Reviewed before publication',
-    body: 'Each submission is checked before it becomes visible, helping the archive stay credible and useful.',
+    body: 'Each submission is checked before it becomes visible, helping the civic story record stay credible and useful.',
   },
   {
     title: 'Preserve real local voices',
@@ -43,11 +43,11 @@ const previewMeta = {
             Share links to existing Facebook, TikTok, or YouTube posts that reveal what communities are living through, from flooding and poor roads to water scarcity, electricity failures, and other urgent realities.
           </p>
           <p class="mt-4 max-w-2xl font-body text-base leading-8 text-on-surface-variant">
-            Every submission is reviewed before it is shown publicly. The goal is not to create another social platform, but to preserve trustworthy evidence and amplify real stories from communities across Igala land and Kogi State.
+            Every submission is reviewed before it is shown publicly. Approved evidence appears in dedicated archive and can also be published as its own standalone impact story.
           </p>
 
           <p class="mt-5 inline-flex rounded-full border border-secondary/15 bg-surface-container-lowest/85 px-4 py-2 font-body text-sm text-on-surface-variant shadow-[0_12px_30px_-24px_rgb(92_58_33_/_0.22)] backdrop-blur-sm">
-            Share links to real community videos already posted online.
+            Share links to real community videos for archive and story publishing.
           </p>
 
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -55,9 +55,9 @@ const previewMeta = {
               <span class="material-symbols-outlined text-[18px]">library_add</span>
               Submit Evidence
             </AppButton>
-            <AppButton to="/impact/evidence" variant="secondary">
-              <span class="material-symbols-outlined text-[18px]">video_library</span>
-              Explore Evidence Archive
+            <AppButton to="/impact/stories" variant="secondary">
+              <span class="material-symbols-outlined text-[18px]">auto_stories</span>
+              Browse Impact Stories
             </AppButton>
           </div>
 
@@ -80,7 +80,7 @@ const previewMeta = {
               <div class="flex items-center justify-between gap-3 border-b border-outline-variant/15 px-5 py-4">
                 <div>
                   <p class="font-label text-[11px] font-semibold uppercase tracking-[0.16em] text-secondary">Editorial Preview</p>
-                  <p class="mt-1 font-body text-sm text-on-surface-variant">How approved evidence may appear in the archive.</p>
+                  <p class="mt-1 font-body text-sm text-on-surface-variant">How approved evidence may appear inside archive.</p>
                 </div>
                 <span class="rounded-full border border-primary/10 bg-primary/5 px-3 py-1 font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
                   Review Queue
@@ -106,7 +106,7 @@ const previewMeta = {
                           {{ previewMeta.category }}
                         </span>
                         <p class="mt-4 max-w-sm font-headline text-2xl font-semibold leading-tight text-white sm:text-[1.75rem]">
-                          Linked evidence documenting washed-out roads after heavy rainfall.
+                          Standalone evidence documenting washed-out roads after heavy rainfall.
                         </p>
                       </div>
 
@@ -133,7 +133,7 @@ const previewMeta = {
                   </div>
                   <div class="rounded-[1rem] border border-outline-variant/15 bg-surface-container-low px-4 py-3">
                     <p class="font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">Purpose</p>
-                    <p class="mt-2 font-body text-sm text-on-surface">Public archive record</p>
+                    <p class="mt-2 font-body text-sm text-on-surface">Publish as evidence post</p>
                   </div>
                 </div>
               </div>

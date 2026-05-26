@@ -9,7 +9,7 @@ defineProps({
     default: undefined,
   },
   to: {
-    type: String,
+    type: [String, Object],
     default: undefined,
   },
   variant: {
@@ -23,7 +23,7 @@ defineProps({
   },
 })
 
-const baseClasses = 'inline-flex items-center justify-center gap-2 rounded px-6 py-3 font-label text-sm font-semibold tracking-[0.05em] transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary'
+const baseClasses = 'inline-flex items-center justify-center gap-2 rounded px-6 py-3 font-label text-sm font-semibold tracking-[0.05em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary'
 
 const variantClasses = {
   primary: 'bg-primary text-on-primary shadow-sm hover:bg-primary-container hover:shadow-[0_8px_22px_rgb(92_58_33_/_0.12)]',

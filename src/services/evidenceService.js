@@ -60,26 +60,48 @@ export async function fetchEvidence(filters = {}, admin = false) {
   return data || []
 }
 
+export async function fetchEvidenceForReport(reportId, admin = false) {
+  if (!isSupabaseConfigured || !reportId) return []
+
+  const client = requireSupabase()
+  let query = client
+    .from('community_evidence')
+    .select('*')
+    .eq('report_id', reportId)
+    .order('featured', { ascending: false })
+    .order('created_at', { ascending: false })
+
+  if (!admin) {
+    query = query.eq('approved', true)
+  }
+
+  const { data, error } = await query
+  if (isMissingTableError(error, 'community_evidence')) return []
+  if (error) throw error
+  return data || []
+}
+
 export async function submitEvidence(payload) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
   
   const client = requireSupabase()
+  const insertPayload = {
+    title: payload.title || null,
+    description: payload.description,
+    media_url: payload.media_url,
+    media_type: payload.media_type,
+    category: payload.category,
+    community_name: payload.community_name || null,
+    lga: payload.lga || null,
+    approved: false,
+    featured: false
+  }
+
   const { data, error } = await client
     .from('community_evidence')
-    .insert({
-      title: payload.title || null,
-      description: payload.description,
-      media_url: payload.media_url,
-      media_type: payload.media_type,
-      category: payload.category,
-      community_name: payload.community_name || null,
-      lga: payload.lga || null,
-      approved: false,
-      featured: false
-    })
+    .insert(insertPayload)
     .select()
     .single()
-    
   if (error) throw error
   return data
 }
@@ -92,7 +114,6 @@ export async function updateEvidenceStatus(id, updates) {
     .from('community_evidence')
     .update(updates)
     .eq('id', id)
-    
   if (error) throw error
 }
 

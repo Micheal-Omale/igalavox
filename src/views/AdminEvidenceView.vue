@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchEvidence, updateEvidenceStatus, deleteEvidence, getCategoryMeta } from '../services/evidenceService'
+import { createImpactReportFromEvidence, deleteImpactReport, fetchImpactStory, updateReportStatus } from '../services/impactService'
 import AppButton from '../components/AppButton.vue'
 import SocialEmbed from '../components/SocialEmbed.vue'
 import BrandLogo from '../components/BrandLogo.vue'
@@ -27,7 +28,7 @@ const loadEvidence = async () => {
   loading.value = true
   error.value = null
   try {
-    evidenceItems.value = await fetchEvidence({}, true) // admin = true
+    evidenceItems.value = await fetchEvidence({}, true)
   } catch (err) {
     console.error('Failed to load evidence:', err)
     error.value = 'Could not load evidence submissions.'
@@ -59,26 +60,70 @@ const filteredItems = computed(() => {
 })
 
 const handleStatusChange = async (item, statusData) => {
+  await updateEvidenceStatus(item.id, statusData)
+  Object.assign(item, statusData)
+}
+
+const syncLinkedReportStatus = async (item, status, verified) => {
+  if (!item.report_id) return
+  await updateReportStatus(item.report_id, status, verified)
+}
+
+const ensurePublishedReport = async (item) => {
+  if (item.report_id) {
+    const existingReport = await fetchImpactStory(item.report_id, true)
+    if (existingReport) {
+      await updateReportStatus(existingReport.id, 'approved', true)
+      return existingReport.id
+    }
+  }
+
+  const createdReport = await createImpactReportFromEvidence(item)
+  await updateEvidenceStatus(item.id, { report_id: createdReport.id })
+  item.report_id = createdReport.id
+  return createdReport.id
+}
+
+const handleApprove = async (item) => {
   try {
-    await updateEvidenceStatus(item.id, statusData)
-    // update local state
-    Object.assign(item, statusData)
-    
-    // close modal if open and we are rejecting/deleting maybe, or just keep it open so they can see changes
+    await ensurePublishedReport(item)
+    await handleStatusChange(item, { approved: true, rejected: false })
   } catch (err) {
-    console.error('Status update failed', err)
-    alert('Failed to update status')
+    console.error('Approve and publish failed', err)
+    alert(err.message || 'Failed to publish approved evidence to impact stories')
   }
 }
 
-const handleApprove = (item) => handleStatusChange(item, { approved: true, rejected: false })
-const handleReject = (item) => handleStatusChange(item, { approved: false, rejected: true, featured: false })
-const handleRevertToPending = (item) => handleStatusChange(item, { approved: false, rejected: false, featured: false })
+const handleReject = async (item) => {
+  try {
+    await syncLinkedReportStatus(item, 'rejected', false)
+    await handleStatusChange(item, { approved: false, rejected: true, featured: false })
+  } catch (err) {
+    console.error('Reject failed', err)
+    alert(err.message || 'Failed to reject evidence')
+  }
+}
+
+const handleRevertToPending = async (item) => {
+  try {
+    await syncLinkedReportStatus(item, 'pending', false)
+    await handleStatusChange(item, { approved: false, rejected: false, featured: false })
+  } catch (err) {
+    console.error('Revert to pending failed', err)
+    alert(err.message || 'Failed to move evidence back to pending')
+  }
+}
+
 const handleToggleFeatured = (item) => handleStatusChange(item, { featured: !item.featured })
 
 const handleDelete = async (id) => {
   if (!confirm('Are you sure you want to permanently delete this submission?')) return
+
+  const item = evidenceItems.value.find((entry) => entry.id === id)
   try {
+    if (item?.report_id) {
+      await deleteImpactReport(item.report_id)
+    }
     await deleteEvidence(id)
     evidenceItems.value = evidenceItems.value.filter(e => e.id !== id)
     if (selectedItem.value?.id === id) selectedItem.value = null
@@ -312,6 +357,20 @@ const getStatusText = (item) => {
                       </div>
 
                       <div class="space-y-3 rounded-xl border border-outline-variant/30 bg-surface p-4">
+                        <div class="rounded-xl border border-secondary/15 bg-secondary-container/10 px-4 py-3">
+                          <p class="font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-secondary">Publishing</p>
+                          <p class="mt-1 font-body text-sm leading-6 text-on-surface-variant">
+                            Approving this evidence also publishes it as standalone post in impact stories.
+                          </p>
+                        </div>
+                        <RouterLink
+                          v-if="selectedItem.report_id"
+                          :to="`/impact/stories/${selectedItem.report_id}`"
+                          class="inline-flex items-center gap-2 font-label text-sm font-semibold text-primary hover:underline"
+                        >
+                          <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                          Open published story
+                        </RouterLink>
                         <h3 class="font-label text-sm font-bold uppercase tracking-wider text-secondary">Source URL</h3>
                         <div class="break-all font-body text-sm leading-6 text-on-surface-variant">
                           <a :href="selectedItem.media_url" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">{{ selectedItem.media_url }}</a>
@@ -331,7 +390,7 @@ const getStatusText = (item) => {
                         :class="selectedItem.featured ? 'border-primary text-primary bg-primary-container/20 hover:bg-primary-container/40' : 'border-outline-variant text-on-surface hover:bg-surface-variant'"
                       >
                         <span class="material-symbols-outlined text-[18px]" :class="selectedItem.featured ? 'fill-current' : ''">star</span>
-                        {{ selectedItem.featured ? 'Unfeature Submission' : 'Feature on Archive' }}
+                        {{ selectedItem.featured ? 'Unfeature Evidence' : 'Feature Evidence' }}
                       </button>
                     </div>
                     

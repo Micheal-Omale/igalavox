@@ -1,11 +1,8 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import { submitEvidence, EVIDENCE_CATEGORIES } from '../services/evidenceService'
 import { detectPlatform, normalizeMediaUrl } from '../utils/socialVideo'
-
-const router = useRouter()
 
 const formData = ref({
   mediaUrl: '',
@@ -22,9 +19,7 @@ const errorMessage = ref('')
 const successMessage = ref(false)
 
 const kogiLGAs = [
-  'Adavi', 'Ajaokuta', 'Ankpa', 'Bassa', 'Dekina', 'Ibaji', 'Idah', 'Igalamela-Odolu', 
-  'Ijumu', 'Kabba/Bunu', 'Kogi', 'Lokoja', 'Mopa-Muro', 'Ofu', 'Ogori/Magongo', 
-  'Okehi', 'Okene', 'Olamaboro', 'Omala', 'Yagba East', 'Yagba West'
+   'Ajaokuta', 'Ankpa', 'Bassa', 'Dekina', 'Ibaji', 'Idah', 'Igalamela-Odolu','Ofu', 'Olamaboro', 'Omala',  
 ].sort()
 
 watch(() => formData.value.mediaUrl, (url) => {
@@ -79,7 +74,7 @@ const handleSubmit = async () => {
     <div class="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
       <RouterLink to="/impact/evidence" class="mb-8 inline-flex items-center gap-1 font-label text-sm font-semibold text-tertiary hover:underline">
         <span class="material-symbols-outlined text-sm">arrow_back</span>
-        Back to Archive
+        Back to Community Evidence
       </RouterLink>
 
       <div class="mb-10">
@@ -87,7 +82,7 @@ const handleSubmit = async () => {
         <h1 class="mt-2 font-display text-3xl font-bold text-primary sm:text-4xl">Submit Community Evidence</h1>
         <p class="mt-4 font-body text-base text-on-surface-variant max-w-2xl">
           Help document life, challenges, and cultural events in our communities. 
-          Provide a link to a public video on Facebook, TikTok, or YouTube, and tell us what it's about.
+          Provide a link to a public video on Facebook, TikTok, or YouTube so it can be reviewed, published in community evidence archive, and posted to impact stories after approval.
         </p>
       </div>
 
@@ -97,8 +92,9 @@ const handleSubmit = async () => {
         </div>
         <h2 class="font-display text-xl font-bold text-emerald-800">Evidence Submitted!</h2>
         <p class="mt-2 text-emerald-700">Thank you for contributing. Your submission has been received and is pending admin approval.</p>
-        <div class="mt-6">
+        <div class="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <AppButton @click="successMessage = false" variant="secondary">Submit Another</AppButton>
+          <AppButton to="/impact/evidence">View Community Evidence</AppButton>
         </div>
       </div>
 
@@ -109,7 +105,6 @@ const handleSubmit = async () => {
         </div>
 
         <div class="space-y-6">
-          <!-- Required Fields -->
           <div>
             <label for="mediaUrl" class="block font-label text-sm font-bold text-on-surface mb-2">
               Video URL <span class="text-error">*</span>
@@ -136,7 +131,7 @@ const handleSubmit = async () => {
                   <span class="material-symbols-outlined text-[14px]">play_circle</span>
                   {{ detectedPlatform }} Detected
                 </span>
-                <span class="text-xs text-on-surface-variant">A preview will be generated upon approval.</span>
+                <span class="text-xs text-on-surface-variant">Approved evidence will appear in archive and become story post.</span>
               </div>
             </div>
           </div>

@@ -26,8 +26,8 @@ const onSubmit = () => {
     role="search"
     @submit.prevent="onSubmit"
   >
-    <div class="absolute -inset-1 rounded-full bg-gradient-to-r from-tertiary to-primary opacity-25 blur transition duration-700 group-hover:opacity-40"></div>
-    <div class="ambient-shadow relative flex items-stretch gap-2 rounded-full border-2 border-surface-variant bg-surface-container-lowest p-2 transition focus-within:border-tertiary">
+    <div class="absolute -inset-1 rounded-full bg-gradient-to-r from-tertiary to-primary opacity-25 blur"></div>
+    <div class="ambient-shadow relative flex items-stretch gap-2 rounded-full border-2 border-surface-variant bg-surface-container-lowest p-2 focus-within:border-tertiary">
       <div class="flex min-w-0 flex-1 items-center">
         <span class="material-symbols-outlined ml-2 text-outline sm:ml-4">search</span>
         <input

@@ -20,7 +20,7 @@ const impactSubLinks = [
   { label: 'Overview & Stats', to: '/impact', description: 'View real-time statistics and summaries', icon: 'insights' },
   { label: 'Interactive Map', to: '/impact/map', description: 'Explore community-reported concerns', icon: 'map' },
   { label: 'Stories Feed', to: '/impact/stories', description: 'Read verified cultural & impact stories', icon: 'article' },
-  { label: 'Community Evidence', to: '/impact/evidence', description: 'Watch community media and submissions', icon: 'video_library' },
+  { label: 'Submit Evidence', to: '/impact/evidence/submit', description: 'Submit public videos for archive and story publishing', icon: 'library_add' },
   { label: 'Report an Issue', to: '/impact/report', description: 'Submit a new report from your area', icon: 'campaign' },
 ]
 

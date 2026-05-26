@@ -58,7 +58,7 @@ const openDetails = () => {
 
 <template>
   <article
-    class="ambient-shadow group relative cursor-pointer overflow-hidden rounded-lg border border-secondary/15 bg-surface-container-lowest p-8 transition-shadow hover:shadow-[0_12px_28px_rgb(92_58_33_/_0.12)] focus:outline-none focus-visible:ring-2 focus-visible:ring-tertiary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    class="ambient-shadow group relative cursor-pointer overflow-hidden rounded-lg border border-secondary/15 bg-surface-container-lowest p-8 focus:outline-none focus-visible:ring-2 focus-visible:ring-tertiary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     role="button"
     tabindex="0"
     @click="openDetails"
@@ -69,7 +69,7 @@ const openDetails = () => {
     <div class="mb-4 flex items-start justify-between gap-4">
       <h3 class="font-headline text-2xl font-semibold leading-tight text-primary">{{ name }}</h3>
       <button
-        class="rounded-full p-2 text-tertiary transition-colors hover:bg-surface-container disabled:cursor-not-allowed disabled:opacity-40"
+        class="rounded-full p-2 text-tertiary disabled:cursor-not-allowed disabled:opacity-40"
         type="button"
         :aria-label="`Play ${name} pronunciation`"
         :disabled="!audioSrc || audioError"

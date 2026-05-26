@@ -129,7 +129,7 @@ const handleIframeLoad = () => {
             <div class="space-y-2">
               <p class="font-display text-xl font-semibold text-primary">Embed unavailable</p>
               <p class="font-body text-sm leading-6 text-on-surface-variant">
-                This link cannot be rendered safely inside the archive. You can still open the original post directly.
+                This link cannot be rendered safely inside the story. You can still open the original post directly.
               </p>
             </div>
           </div>

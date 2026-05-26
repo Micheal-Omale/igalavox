@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import AppButton from '../components/AppButton.vue'
 import SocialEmbed from '../components/SocialEmbed.vue'
 import { fetchEvidence, getCategoryMeta, EVIDENCE_CATEGORIES } from '../services/evidenceService'
-import { getYoutubeId } from '../utils/socialVideo'
+import { getEmbedConfig, getYoutubeId } from '../utils/socialVideo'
 
 const evidenceList = ref([])
 const isLoading = ref(true)
@@ -64,6 +64,10 @@ function formatDate(value) {
 function getYoutubeThumbnail(url) {
   const videoId = getYoutubeId(url)
   return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''
+}
+
+function getMediaPreviewConfig(url) {
+  return getEmbedConfig(url)
 }
 
 const activeVideo = ref(null)
@@ -148,6 +152,16 @@ const closeVideo = () => {
                 :src="getYoutubeThumbnail(evidence.media_url)"
                 class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
               />
+              <iframe
+                v-else-if="evidence.media_type === 'facebook' && getMediaPreviewConfig(evidence.media_url)?.embedUrl"
+                :src="getMediaPreviewConfig(evidence.media_url).embedUrl"
+                title="Facebook video preview"
+                class="pointer-events-none absolute inset-0 h-full w-full border-0"
+                loading="lazy"
+                scrolling="no"
+                allow="encrypted-media; picture-in-picture; web-share"
+                referrerpolicy="strict-origin-when-cross-origin"
+              ></iframe>
               <div v-else class="w-full h-full flex items-center justify-center bg-tertiary-fixed text-on-tertiary-fixed opacity-80 group-hover:opacity-100 transition-opacity">
                 <span class="material-symbols-outlined text-4xl">play_circle</span>
               </div>

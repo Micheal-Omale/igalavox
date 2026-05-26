@@ -1,7 +1,7 @@
 <script setup>
+import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { RouterView } from 'vue-router'
-import { onMounted } from 'vue'
 import { useAuthStore } from './stores/authStore'
 import SiteFooter from './components/SiteFooter.vue'
 import SiteNavbar from './components/SiteNavbar.vue'

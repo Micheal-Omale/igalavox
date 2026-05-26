@@ -10,6 +10,14 @@ export const impactCategories = [
   { key: 'healthcare', label: 'Healthcare', icon: 'local_hospital', marker: '#047857' },
 ]
 
+const evidenceToImpactCategoryMap = {
+  infrastructure: 'roads',
+  environment: 'water',
+  utilities: 'electricity',
+  culture: 'roads',
+  general: 'roads',
+}
+
 const fallbackCommunities = Array.isArray(localCommunities) ? localCommunities : []
 const fallbackLgas = [...new Set(fallbackCommunities.map((item) => item.lga).filter(Boolean))].sort()
 
@@ -281,6 +289,34 @@ export async function fetchImpactStory(id, admin = false) {
 }
 
 export const fetchImpactReportById = fetchImpactStory
+
+export async function createImpactReportFromEvidence(evidence) {
+  if (!evidence) throw new Error('Evidence item is required.')
+
+  const descriptionParts = [String(evidence.description || '').trim()]
+
+  if (evidence.media_type) {
+    descriptionParts.push(`Source platform: ${String(evidence.media_type).trim()}`)
+  }
+
+  if (evidence.media_url) {
+    descriptionParts.push(`Source evidence link: ${String(evidence.media_url).trim()}`)
+  }
+
+  return submitImpactReport({
+    category: evidenceToImpactCategoryMap[evidence.category] || 'roads',
+    title: evidence.title || evidence.community_name || 'Community Evidence Report',
+    description: descriptionParts.filter(Boolean).join('\n\n'),
+    community_name: evidence.community_name || 'Community Submission',
+    lga: evidence.lga || 'Unspecified',
+    latitude: null,
+    longitude: null,
+    status: 'approved',
+    verified: true,
+    image_url: null,
+    image_urls: [],
+  })
+}
 
 export async function uploadImpactImage(file) {
   if (!isSupabaseConfigured) throw new Error('Supabase is not configured.')
