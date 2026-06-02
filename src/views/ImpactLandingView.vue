@@ -1,10 +1,12 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import ImpactCommunityEvidenceSection from '../components/impact/ImpactCommunityEvidenceSection.vue'
 import ImpactMap from '../components/ImpactMap.vue'
 import { fetchImpactReports, fetchImpactStats, hasCoordinates } from '../services/impactService'
 
+const route = useRoute()
 const stats = ref({ totalReports: 0, waterIssues: 0, electricityIssues: 0, verifiedCommunities: 0 })
 const previewReports = ref([])
 const isLoading = ref(true)
@@ -25,16 +27,40 @@ const statCards = computed(() => [
 
 const mapReports = computed(() => previewReports.value.length ? previewReports.value : fallbackReports)
 
-onMounted(async () => {
+async function loadImpactData() {
+  isLoading.value = true
+  errorMessage.value = ''
+
   try {
+    // Yield a microtask so the Supabase client's auth state can settle
+    // after the initial getSession() call from App.vue's onMounted.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     const [nextStats, reports] = await Promise.all([fetchImpactStats(), fetchImpactReports({ limit: 6 })])
     stats.value = nextStats
     previewReports.value = reports.filter(hasCoordinates).slice(0, 6)
+
+    // Retry once if reports came back empty — covers auth-race window
+    if (reports.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      const [retriedStats, retriedReports] = await Promise.all([fetchImpactStats(), fetchImpactReports({ limit: 6 })])
+      stats.value = retriedStats
+      previewReports.value = retriedReports.filter(hasCoordinates).slice(0, 6)
+    }
   } catch (error) {
     errorMessage.value = 'Impact statistics are not available yet.'
     console.error('Failed to fetch impact stats:', error)
   } finally {
     isLoading.value = false
+  }
+}
+
+onMounted(loadImpactData)
+
+// Re-fetch when navigating back to this route via SPA navigation
+watch(() => route.fullPath, (newPath) => {
+  if (newPath === '/impact') {
+    loadImpactData()
   }
 })
 </script>

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import SocialEmbed from '../components/SocialEmbed.vue'
@@ -19,21 +19,47 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(value))
 }
 
-onMounted(async () => {
-  try {
-    story.value = await fetchImpactStory(route.params.id)
-    if (!story.value) errorMessage.value = 'Impact story not found.'
+async function loadStory(storyId) {
+  if (!storyId) return
 
-    if (story.value) {
-      const evidenceItems = await fetchEvidenceForReport(story.value.id)
-      linkedEvidence.value = evidenceItems[0] || null
+  isLoading.value = true
+  errorMessage.value = ''
+  story.value = null
+  linkedEvidence.value = null
+
+  try {
+    // Yield a microtask so the Supabase client's auth state can settle
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    let fetched = await fetchImpactStory(storyId)
+
+    // Retry once if the story wasn't found — covers auth-race window
+    if (!fetched) {
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      fetched = await fetchImpactStory(storyId)
     }
+
+    story.value = fetched
+    if (!fetched) {
+      errorMessage.value = 'Impact story not found.'
+      return
+    }
+
+    const evidenceItems = await fetchEvidenceForReport(fetched.id)
+    linkedEvidence.value = evidenceItems[0] || null
   } catch (error) {
     errorMessage.value = 'Unable to load this impact story.'
     console.error('Failed to fetch impact story:', error)
   } finally {
     isLoading.value = false
   }
+}
+
+onMounted(() => loadStory(route.params.id))
+
+// Re-fetch when navigating between different stories without unmounting
+watch(() => route.params.id, (newId) => {
+  if (newId) loadStory(newId)
 })
 </script>
 

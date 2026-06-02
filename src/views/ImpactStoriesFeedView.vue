@@ -1,10 +1,12 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import AppButton from '../components/AppButton.vue'
 import ImpactStoryCardMedia from '../components/impact/ImpactStoryCardMedia.vue'
 import { fetchEvidenceForReport } from '../services/evidenceService'
 import { fetchImpactReports, getCategoryMeta } from '../services/impactService'
 
+const route = useRoute()
 const stories = ref([])
 const isLoading = ref(true)
 const errorMessage = ref('')
@@ -20,23 +22,55 @@ function excerpt(text, limit = 150) {
   return text.length > limit ? `${text.slice(0, limit)}...` : text
 }
 
-onMounted(async () => {
+async function loadStories() {
+  isLoading.value = true
+  errorMessage.value = ''
+  storyEvidenceMap.value = {}
+
   try {
-    stories.value = await fetchImpactReports({ status: 'approved' })
+    // Yield a microtask so the Supabase client's auth state can settle after
+    // the initial getSession() call that App.vue fires on mount. Without this,
+    // the first SPA navigation can race with the auth header swap and return
+    // empty results despite valid RLS policies.
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    const evidenceEntries = await Promise.all(
-      stories.value.map(async (story) => {
-        const linkedEvidence = await fetchEvidenceForReport(story.id)
-        return [story.id, linkedEvidence[0] || null]
-      })
-    )
+    const fetchedStories = await fetchImpactReports({ status: 'approved' })
+    stories.value = fetchedStories
 
-    storyEvidenceMap.value = Object.fromEntries(evidenceEntries)
+    // If the first attempt returns empty but we haven't retried yet, wait
+    // briefly and try once more — covers the auth‑race window.
+    if (fetchedStories.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      const retried = await fetchImpactReports({ status: 'approved' })
+      if (retried.length > 0) {
+        stories.value = retried
+      }
+    }
+
+    if (stories.value.length) {
+      const evidenceEntries = await Promise.all(
+        stories.value.map(async (story) => {
+          const linkedEvidence = await fetchEvidenceForReport(story.id)
+          return [story.id, linkedEvidence[0] || null]
+        })
+      )
+      storyEvidenceMap.value = Object.fromEntries(evidenceEntries)
+    }
   } catch (error) {
     errorMessage.value = 'Unable to load impact stories.'
     console.error('Failed to fetch impact stories:', error)
   } finally {
     isLoading.value = false
+  }
+}
+
+onMounted(loadStories)
+
+// Re-fetch when navigating back to this route (e.g. browser back button)
+// so data is always fresh without requiring a hard refresh.
+watch(() => route.fullPath, (newPath) => {
+  if (newPath === '/impact/stories') {
+    loadStories()
   }
 })
 </script>
