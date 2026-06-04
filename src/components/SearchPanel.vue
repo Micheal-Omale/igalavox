@@ -1,7 +1,9 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { isSupabaseConfigured, requireSupabase } from '../services/supabase'
 import AppButton from './AppButton.vue'
+import { searchArchiveNames } from '../composables/useNameArchive'
+import { getDisplayName, normalizeText } from '../composables/useTonalNames'
+import { enhanceNameRecord } from '../utils/nameEnhancements'
 
 const props = defineProps({
   modelValue: {
@@ -19,10 +21,10 @@ const selectedIndex = ref(-1)
 const searchContainer = ref(null)
 
 const defaultSuggestions = [
-  { name: 'Omojo', meaning: '"God\'s child"' },
-  { name: 'Ache', meaning: '"Female child born after her father\'s death"' },
-  { name: 'Okolo', meaning: '"Helper"' },
-  { name: 'Ugbane', meaning: '"Saviour"' }
+  enhanceNameRecord({ name: 'Omojo', meaning: '"God\'s child"' }),
+  enhanceNameRecord({ name: 'Ache', meaning: '"Female child born after her father\'s death"' }),
+  enhanceNameRecord({ name: 'Okolo', meaning: '"Helper"' }),
+  enhanceNameRecord({ name: 'Ugbane', meaning: '"Saviour"' }),
 ]
 
 let debounceTimer = null
@@ -33,48 +35,18 @@ const fetchSuggestions = async (query) => {
     isLoading.value = false
     return
   }
-  
-  if (!isSupabaseConfigured) {
-    // Basic fallback simulation if no database connection
-    suggestions.value = defaultSuggestions.filter(s => 
-      s.name.toLowerCase().includes(query.toLowerCase()) || 
-      s.meaning.toLowerCase().includes(query.toLowerCase())
-    )
-    isLoading.value = false
-    return
-  }
 
   isLoading.value = true
-  
+
   try {
-    const supabase = requireSupabase()
-    const escaped = query.replace(/[%_,]/g, '\\$&')
-    
-    const { data, error } = await supabase
-      .from('names')
-      .select('id, name, meaning, audio_id, audio_url')
-      .or(`name.ilike.%${escaped}%,meaning.ilike.%${escaped}%`)
-      .limit(8)
-      
-    if (error) throw error
-    
-    // Sort locally to prioritize exact or starts-with matches over inner matches
-    const sorted = (data || []).sort((a, b) => {
-      const qLower = query.toLowerCase()
-      const aName = a.name.toLowerCase()
-      const bName = b.name.toLowerCase()
-      
-      const aStarts = aName.startsWith(qLower)
-      const bStarts = bName.startsWith(qLower)
-      
-      if (aStarts && !bStarts) return -1
-      if (!aStarts && bStarts) return 1
-      return 0
-    })
-    
-    suggestions.value = sorted
+    const { rows } = searchArchiveNames(query, { limit: 8 })
+    suggestions.value = rows
   } catch (error) {
     console.error('Failed to fetch autocomplete suggestions:', error)
+    suggestions.value = defaultSuggestions.filter((suggestion) => {
+      const needle = normalizeText(query)
+      return normalizeText(suggestion.name).includes(needle) || normalizeText(suggestion.meaning).includes(needle)
+    })
   } finally {
     isLoading.value = false
   }
@@ -122,8 +94,9 @@ onUnmounted(() => {
 })
 
 const selectSuggestion = (suggestion) => {
-  emit('update:modelValue', suggestion.name)
-  emit('search', suggestion.name)
+  const nextValue = getDisplayName(suggestion)
+  emit('update:modelValue', nextValue)
+  emit('search', nextValue)
   isOpen.value = false
 }
 
@@ -230,7 +203,7 @@ const onKeyDown = (e) => {
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <h4 class="truncate font-headline text-lg font-semibold text-primary">{{ item.name }}</h4>
+              <h4 class="truncate font-headline text-lg font-semibold text-primary">{{ item.displayName }}</h4>
               <p v-if="item.meaning" class="mt-0.5 truncate font-body text-sm text-on-surface-variant">
                 {{ item.meaning }}
               </p>

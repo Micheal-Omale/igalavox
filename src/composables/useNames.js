@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import fallbackNames from '../data/igala_names_structured.json'
+import fallbackNames from '../data/igala_names_with_tones.json'
 import { isSupabaseConfigured, requireSupabase, SUPABASE_CONFIG_MESSAGE } from '../services/supabase'
 import { normalizeNameRecord, toNameWritePayload } from '../utils/nameRecord'
 

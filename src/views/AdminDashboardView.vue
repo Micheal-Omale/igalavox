@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore'
 import BrandLogo from '../components/BrandLogo.vue'
 import AdminNavLinks from '../components/admin/AdminNavLinks.vue'
 import AudioSidePanel from '../components/AudioSidePanel.vue'
+import { compareNameRecords, matchesNameQuery } from '../utils/nameEnhancements'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
 const router = useRouter()
@@ -88,13 +89,7 @@ onUnmounted(() => {
 
 const filteredNames = computed(() => {
   return names.value.filter((entry) => {
-    const q = searchQuery.value.trim().toLowerCase()
-    const matchesSearch = !q
-      || entry.name?.toLowerCase().includes(q)
-      || entry.meaning?.toLowerCase().includes(q)
-      || entry.story?.toLowerCase().includes(q)
-      || entry.category?.toLowerCase().includes(q)
-      || entry.tags?.some((tag) => tag.toLowerCase().includes(q))
+    const matchesSearch = matchesNameQuery(entry, searchQuery.value)
 
     let matchesAudio = true
     if (selectedAudioFilter.value === 'has-audio') matchesAudio = !!entry.audioUrl
@@ -109,7 +104,7 @@ const filteredNames = computed(() => {
       || (entry.category || '').toLowerCase() === selectedCategory.value.toLowerCase()
 
     return matchesSearch && matchesAudio && matchesGender && matchesCategory
-  })
+  }).sort(compareNameRecords)
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredNames.value.length / pageSize)))
@@ -200,7 +195,7 @@ const removeStoredAudio = async (entry) => {
 }
 
 const deleteName = async (entry) => {
-  if (!confirm(`Delete "${entry.name}" permanently? This cannot be undone.`)) return
+  if (!confirm(`Delete "${entry.displayName}" permanently? This cannot be undone.`)) return
   if (!isSupabaseConfigured) {
     alert('Supabase is not configured for this deployment.')
     return
@@ -434,10 +429,10 @@ const signOut = async () => {
                     <td class="px-5 py-3.5">
                       <div class="flex items-center gap-3">
                         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-container/12 font-display text-sm font-bold text-primary">
-                          {{ entry.name?.charAt(0) }}
+                          {{ (entry.displayName || '?').charAt(0) }}
                         </div>
                         <div class="min-w-0">
-                          <span class="block truncate font-display text-sm font-semibold text-on-surface">{{ entry.name }}</span>
+                          <span class="block truncate font-display text-sm font-semibold text-on-surface">{{ entry.displayName }}</span>
                           <span class="block truncate font-body text-xs text-on-surface-variant/60">{{ entry.gender }}</span>
                         </div>
                       </div>

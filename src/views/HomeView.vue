@@ -196,9 +196,12 @@ onMounted(async () => {
           <NameCard
             v-for="item in featuredNames"
             :key="item.name"
-            :name="item.name"
+            :name="item"
             :meaning="item.meaning"
+            :story="item.story"
             :tags="item.tags"
+            :gender="item.gender"
+            :gender-icon="item.genderIcon"
             :audio-src="item.audioSrc"
             @select="selectedName = item"
           />

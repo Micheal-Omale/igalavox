@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 import BrandLogo from '../components/BrandLogo.vue'
 import NameDetailModal from '../components/NameDetailModal.vue'
+import { compareNameRecords, matchesNameQuery } from '../utils/nameEnhancements'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
 const isMobileMenuOpen = ref(false)
@@ -18,12 +19,12 @@ const editName = (entry) => {
   router.push({ path: '/admin', query: { editId: entry.id } })
 }
 
-const deleteName = async (id) => {
-  if (!confirm('Are you sure you want to delete this name?')) return
+const deleteName = async (entry) => {
+  if (!confirm(`Are you sure you want to delete "${entry.displayName}"?`)) return
   try {
-    const { error } = await supabase.from('names').delete().eq('id', id)
+    const { error } = await supabase.from('names').delete().eq('id', entry.id)
     if (error) throw error
-    names.value = names.value.filter(n => n.id !== id)
+    names.value = names.value.filter(n => n.id !== entry.id)
   } catch (err) {
     console.error('Failed to delete name:', err)
     alert('Failed to delete name')
@@ -64,7 +65,7 @@ const fetchNames = async () => {
         month: 'short', day: 'numeric', year: 'numeric'
       })
 
-      const initials = item.name.charAt(0).toUpperCase()
+      const initials = (item.displayName || '?').charAt(0).toUpperCase()
       
       return {
         ...item,
@@ -91,14 +92,13 @@ onMounted(() => {
 const filteredNames = computed(() => {
   return names.value.filter((entry) => {
     const matchesSearch = !searchQuery.value
-      || entry.name.toLowerCase().includes(searchQuery.value.toLowerCase())
-      || entry.meaning.toLowerCase().includes(searchQuery.value.toLowerCase())
+      || matchesNameQuery(entry, searchQuery.value)
 
     const matchesCategory = !selectedCategory.value || entry.category.toLowerCase() === selectedCategory.value.toLowerCase()
     const matchesStatus = !selectedStatus.value || entry.status.toLowerCase() === selectedStatus.value.toLowerCase()
 
     return matchesSearch && matchesCategory && matchesStatus
-  })
+  }).sort(compareNameRecords)
 })
 
 const categoryOptions = computed(() => {
@@ -296,7 +296,7 @@ const tableSummary = computed(() => {
                         <div :class="['flex h-10 w-10 items-center justify-center rounded-full font-headline text-lg font-semibold', entry.avatarTone]">
                           {{ entry.initials }}
                         </div>
-                        <span class="font-headline text-lg font-semibold text-on-surface">{{ entry.name }}</span>
+                        <span class="font-headline text-lg font-semibold text-on-surface">{{ entry.displayName }}</span>
                       </div>
                     </td>
                     <td class="px-6 py-4">
@@ -326,7 +326,7 @@ const tableSummary = computed(() => {
                         <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-surface-variant hover:text-tertiary-container" type="button" title="Edit" @click="editName(entry)">
                           <span class="material-symbols-outlined text-sm">edit</span>
                         </button>
-                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-error-container hover:text-error" type="button" title="Delete" @click="deleteName(entry.id)">
+                        <button class="rounded p-1.5 text-on-surface-variant transition-colors hover:bg-error-container hover:text-error" type="button" title="Delete" @click="deleteName(entry)">
                           <span class="material-symbols-outlined text-sm">delete</span>
                         </button>
                       </div>

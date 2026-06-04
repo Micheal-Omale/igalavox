@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { resolveNameAudioSource, useAudioPlayer } from '../composables/useAudioPlayer'
+import { getDisplayName, normalizeText } from '../composables/useTonalNames'
 
 const props = defineProps({
   name: {
@@ -14,9 +16,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const audio = ref(null)
-const isPlaying = ref(false)
+const {
+  isSourceErrored,
+  isSourceLoading,
+  isSourcePlaying,
+  stopAudio,
+  toggleAudio: toggleSharedAudio,
+} = useAudioPlayer()
 const isFavorite = ref(false)
+const isBookmarked = ref(false)
 const shareCopied = ref(false)
 const isDownloading = ref(false)
 const downloadToast = ref('')
@@ -26,18 +34,36 @@ const textureImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuA9abV2
 
 const entry = computed(() => (typeof props.name === 'string' ? { name: props.name } : props.name))
 
-const displayName = computed(() => entry.value.name || 'Unnamed entry')
+const displayName = computed(() => getDisplayName(entry.value) || 'Unnamed entry')
+const pronunciation = computed(() => entry.value.pronunciation || '')
+const category = computed(() => entry.value.category || entry.value.origin || 'Archive')
 const meaning = computed(() => entry.value.meaning || 'Meaning is being reviewed by the archive team.')
 const story = computed(() => entry.value.story || entry.value.description || entry.value.origin_story_final || entry.value.origin_story_ai || 'This archive entry is still gathering its full cultural context, oral history, and family usage notes.')
 const proverb = computed(() => entry.value.proverb || 'A name remembered keeps the lineage awake.')
-const modalAudioSrc = computed(() => props.audioSrc || entry.value.audioSrc || entry.value.audio_url || entry.value.audioUrl || entry.value.audio || '')
+const modalAudioSrc = computed(() => resolveNameAudioSource(entry.value, props.audioSrc))
+const isPlaying = isSourcePlaying(modalAudioSrc)
+const isLoadingAudio = isSourceLoading(modalAudioSrc)
+const hasAudioError = isSourceErrored(modalAudioSrc)
+const audioButtonLabel = computed(() => {
+  if (!modalAudioSrc.value) return `No pronunciation audio for ${displayName.value}`
+  if (hasAudioError.value) return `${displayName.value} pronunciation failed to load`
+  if (isLoadingAudio.value) return `Loading ${displayName.value} pronunciation`
+  return `${isPlaying.value ? 'Pause' : 'Play'} ${displayName.value} pronunciation`
+})
+const audioButtonTitle = computed(() => {
+  if (!modalAudioSrc.value) return 'No audio available'
+  if (hasAudioError.value) return 'Audio failed to load'
+  return isPlaying.value ? 'Pause pronunciation' : 'Play pronunciation'
+})
 const gender = computed(() => entry.value.gender || 'Unisex')
+const genderIcon = computed(() => entry.value.genderIcon || (gender.value === 'Male' ? 'male' : gender.value === 'Female' ? 'female' : 'person'))
 const tags = computed(() => {
   const rawTags = Array.isArray(entry.value.tags) ? entry.value.tags : []
   return [...new Set([...rawTags, gender.value].filter(Boolean))].slice(0, 3)
 })
+const primaryTag = computed(() => tags.value[0] || category.value)
 
-const fileBaseName = computed(() => displayName.value.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'name')
+const fileBaseName = computed(() => normalizeText(displayName.value).replace(/[^a-z0-9]+/g, '-') || 'name')
 
 const closeModal = () => {
   stopAudio()
@@ -61,29 +87,8 @@ const handleKeydown = (event) => {
   if (event.key === 'Escape') closeModal()
 }
 
-const stopAudio = () => {
-  if (!audio.value) return
-
-  audio.value.pause()
-  audio.value.currentTime = 0
-  isPlaying.value = false
-}
-
 const toggleAudio = async () => {
-  if (!audio.value || !modalAudioSrc.value) return
-
-  if (isPlaying.value) {
-    stopAudio()
-    return
-  }
-
-  audio.value.currentTime = 0
-  await audio.value.play()
-  isPlaying.value = true
-}
-
-const handleAudioEnded = () => {
-  isPlaying.value = false
+  await toggleSharedAudio(modalAudioSrc, `${displayName.value} pronunciation`)
 }
 
 const roundedRect = (ctx, x, y, width, height, radius) => {
@@ -206,7 +211,7 @@ const downloadEntry = async () => {
     await document.fonts?.ready
 
     const width = 1080
-    const height = 1920
+    const height = 1350
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
 
@@ -218,82 +223,126 @@ const downloadEntry = async () => {
     ctx.clip()
 
     const gradient = ctx.createLinearGradient(0, 0, width, height)
-    gradient.addColorStop(0, '#d4af37')
-    gradient.addColorStop(1, '#a44a3f')
+    gradient.addColorStop(0, '#fcf9f4')
+    gradient.addColorStop(0.56, '#f4ede1')
+    gradient.addColorStop(1, '#efe4d2')
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, width, height)
     drawNoise(ctx, width, height)
 
     const sans = '"Plus Jakarta Sans", sans-serif'
     const serif = '"Noto Serif", serif'
-    const tagText = tags.value.filter(Boolean).join(' / ').toUpperCase()
+    const tagText = `${category.value} • ${gender.value}`.toUpperCase()
 
     ctx.save()
-    ctx.font = `700 38px ${sans}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    const tagWidth = Math.min(ctx.measureText(tagText).width + 92, width - 160)
-    const tagX = (width - tagWidth) / 2
-    roundedRect(ctx, tagX, 168, tagWidth, 76, 38)
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.2)'
+    roundedRect(ctx, 48, 48, width - 96, height - 96, 58)
+    ctx.fillStyle = '#fcf9f4'
     ctx.fill()
-    ctx.strokeStyle = 'rgba(252, 249, 244, 0.3)'
+    ctx.strokeStyle = 'rgba(124, 86, 59, 0.18)'
     ctx.lineWidth = 2
     ctx.stroke()
-    ctx.fillStyle = '#fcf9f4'
-    ctx.fillText(tagText, width / 2, 206, tagWidth - 56)
     ctx.restore()
 
     ctx.save()
-    const nameSize = fitFontSize(ctx, displayName.value, width - 160, serif, 700, 128, 62)
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.font = `700 32px ${sans}`
+    const tagWidth = Math.min(ctx.measureText(tagText).width + 88, width - 220)
+    const tagX = (width - tagWidth) / 2
+    roundedRect(ctx, tagX, 92, tagWidth, 68, 34)
+    ctx.fillStyle = '#f6f3ee'
+    ctx.fill()
+    ctx.strokeStyle = 'rgba(124, 86, 59, 0.18)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    ctx.fillStyle = '#7c563b'
+    ctx.fillText(tagText, width / 2, 126, tagWidth - 48)
+    ctx.restore()
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(164, 184)
+    ctx.lineTo(916, 184)
+    ctx.strokeStyle = 'rgba(203, 167, 47, 0.48)'
+    ctx.lineWidth = 2
+    ctx.stroke()
+    for (let index = 0; index < 3; index += 1) {
+      const cx = 460 + index * 80
+      ctx.fillStyle = index === 1 ? '#cba72f' : '#d6c6aa'
+      ctx.beginPath()
+      ctx.moveTo(cx, 184)
+      ctx.lineTo(cx + 10, 194)
+      ctx.lineTo(cx, 204)
+      ctx.lineTo(cx - 10, 194)
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.restore()
+
+    ctx.save()
+    const nameSize = fitFontSize(ctx, displayName.value, width - 170, serif, 700, 112, 58)
     ctx.font = `700 ${nameSize}px ${serif}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.shadowColor = 'rgba(0, 38, 27, 0.35)'
-    ctx.shadowBlur = 20
+    ctx.shadowColor = 'rgba(92, 67, 49, 0.18)'
+    ctx.shadowBlur = 18
     ctx.shadowOffsetY = 8
-    ctx.fillStyle = '#fcf9f4'
-    ctx.fillText(displayName.value, width / 2, 700)
+    ctx.fillStyle = '#00261b'
+    ctx.fillText(displayName.value.toUpperCase(), width / 2, 280)
     ctx.restore()
 
     ctx.save()
-    roundedRect(ctx, 120, 820, width - 240, 180, 44)
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.12)'
+    roundedRect(ctx, 114, 350, width - 228, 136, 32)
+    ctx.fillStyle = '#7c563b'
     ctx.fill()
-    ctx.strokeStyle = 'rgba(252, 249, 244, 0.25)'
+    ctx.strokeStyle = 'rgba(255, 224, 136, 0.22)'
     ctx.lineWidth = 2
     ctx.stroke()
-    ctx.fillStyle = '#fcf9f4'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
+    ctx.fillStyle = '#fcf9f4'
+    ctx.font = `700 28px ${sans}`
+    ctx.fillText('MEANING', width / 2, 377)
     const meaningText = `"${meaning.value.replace(/^"|"$/g, '')}"`
-    const meaningSize = fitFontSize(ctx, meaningText, width - 320, serif, 600, 62, 36)
+    const meaningSize = fitFontSize(ctx, meaningText, width - 300, serif, 600, 42, 28)
     ctx.font = `italic 600 ${meaningSize}px ${serif}`
-    drawWrappedText(ctx, meaningText, width / 2, 910 - meaningSize / 3, width - 320, meaningSize * 1.25, 2)
+    ctx.fillText(meaningText, width / 2, 432)
     ctx.restore()
 
     ctx.save()
-    roundedRect(ctx, 88, 1270, width - 176, 360, 44)
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.12)'
+    roundedRect(ctx, 114, 516, width - 228, 502, 34)
+    ctx.fillStyle = '#f6f3ee'
     ctx.fill()
-    ctx.strokeStyle = 'rgba(252, 249, 244, 0.24)'
+    ctx.strokeStyle = 'rgba(124, 86, 59, 0.16)'
     ctx.lineWidth = 2
     ctx.stroke()
     ctx.textAlign = 'center'
     ctx.textBaseline = 'alphabetic'
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.78)'
-    ctx.font = `700 34px ${sans}`
-    ctx.fillText('ORIGIN STORY', width / 2, 1362)
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.92)'
-    ctx.font = `400 42px ${sans}`
-    drawWrappedText(ctx, story.value, width / 2, 1442, width - 280, 64, 4)
+    ctx.fillStyle = '#7c563b'
+    ctx.font = `700 26px ${sans}`
+    ctx.fillText('ORIGIN STORY', width / 2, 562)
+    ctx.fillStyle = '#2f1502'
+    ctx.font = `400 38px ${sans}`
+    drawWrappedText(ctx, story.value, width / 2, 626, width - 300, 52, 5)
+    ctx.restore()
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(164, 1090)
+    ctx.lineTo(916, 1090)
+    ctx.strokeStyle = 'rgba(124, 86, 59, 0.18)'
+    ctx.lineWidth = 2
+    ctx.stroke()
     ctx.restore()
 
     ctx.save()
     ctx.textAlign = 'center'
-    ctx.fillStyle = 'rgba(252, 249, 244, 0.62)'
-    ctx.font = `400 30px ${sans}`
-    ctx.fillText('- IGALAVOX -', width / 2, 1800)
+    ctx.fillStyle = '#00261b'
+    ctx.font = `700 30px ${sans}`
+    ctx.fillText('IGALAVOX', width / 2, 1152)
+    ctx.fillStyle = '#7c563b'
+    ctx.font = `400 21px ${sans}`
+    ctx.fillText('Preserving Igala Language & Heritage', width / 2, 1190)
     ctx.restore()
 
     const blob = await canvasToBlob(canvas, 'image/png')
@@ -344,163 +393,267 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div
-      class="fixed inset-0 z-50 flex items-end justify-center bg-inverse-surface/45 p-3 backdrop-blur-sm sm:items-center sm:p-4"
-      role="presentation"
-      @click.self="closeModal"
-    >
-      <article
-        class="relative flex max-h-[88vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-[1.5rem] border border-outline-variant/30 bg-surface shadow-2xl sm:max-h-[min(819px,calc(100vh-2rem))] sm:rounded-xl"
-        aria-labelledby="name-detail-title"
-        role="dialog"
-        aria-modal="true"
+    <Transition name="name-modal" appear>
+      <div
+        class="fixed inset-0 z-50 flex items-start justify-center bg-inverse-surface/60 px-3 pb-4 pt-16 backdrop-blur-[2px] sm:px-4 sm:pb-6 sm:pt-24"
+        role="presentation"
+        @click.self="closeModal"
       >
-        <div
-          v-if="downloadToast"
-          class="pointer-events-none absolute left-1/2 top-5 z-30 -translate-x-1/2 rounded-full border border-white/15 bg-inverse-surface/90 px-4 py-2 text-center text-sm font-semibold text-inverse-on-surface shadow-lg backdrop-blur-sm"
+        <article
+          class="relative flex max-h-[82vh] w-full max-w-[95vw] flex-col overflow-hidden rounded-[1.25rem] border border-secondary/15 bg-surface shadow-[0_30px_80px_-34px_rgb(0_0_0_/_0.6)] sm:max-h-[85vh] sm:max-w-[560px] sm:rounded-[1.5rem]"
+          aria-labelledby="name-detail-title"
+          role="dialog"
+          aria-modal="true"
         >
-          {{ downloadToast }}
-        </div>
-
-        <header class="relative flex min-h-56 flex-none flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-primary-container via-[#1a2e28] to-secondary px-6 py-8 text-center sm:h-64 sm:p-8">
-          <img
-            :src="textureImage"
-            alt=""
-            class="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover opacity-10 mix-blend-overlay"
-          />
-
-          <div class="absolute left-4 top-4 z-20 flex max-w-[calc(100%-5rem)] flex-wrap gap-2 sm:left-6 sm:top-6 sm:max-w-[calc(100%-6rem)]">
-            <span
-              v-for="tag in tags"
-              :key="tag"
-              class="rounded-full border border-white/20 bg-white/10 px-2 py-1 font-label text-[10px] font-semibold uppercase tracking-[0.16em] text-white backdrop-blur-sm"
-            >
-              {{ tag }}
-            </span>
-          </div>
-
-          <button
-            class="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary-fixed sm:right-6 sm:top-6"
-            type="button"
-            aria-label="Close name details"
-            @click="closeModal"
+          <div
+            v-if="downloadToast"
+            class="pointer-events-none absolute left-1/2 top-5 z-30 -translate-x-1/2 rounded-full border border-tertiary-fixed/25 bg-inverse-surface/90 px-4 py-2 text-center text-sm font-semibold text-inverse-on-surface shadow-lg backdrop-blur-sm"
           >
-            <span class="material-symbols-outlined">close</span>
-          </button>
-
-          <h1 id="name-detail-title" class="relative z-10 mt-3 max-w-full break-words font-display text-3xl font-bold leading-tight text-white sm:mt-4 sm:text-display">
-            {{ displayName }}
-          </h1>
-          <div class="relative z-10 mt-3 flex flex-col items-center gap-3">
-            <button
-              class="flex items-center gap-2 rounded-full bg-tertiary-fixed px-4 py-1.5 text-on-tertiary-fixed transition-transform hover:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-              type="button"
-              :disabled="!modalAudioSrc"
-              @click.stop="toggleAudio"
-            >
-              <span class="material-symbols-outlined text-[18px]">
-                {{ isPlaying ? 'pause' : 'volume_up' }}
-              </span>
-              <span class="font-label text-sm font-semibold tracking-[0.05em]">
-                {{ isPlaying ? 'Playing' : modalAudioSrc ? 'Listen' : 'No audio' }}
-              </span>
-            </button>
-            <audio v-if="modalAudioSrc" ref="audio" :src="modalAudioSrc" preload="metadata" @ended="handleAudioEnded" />
+            {{ downloadToast }}
           </div>
-        </header>
 
-        <div class="custom-scrollbar flex-1 space-y-8 overflow-y-auto bg-surface-bright px-5 py-6 sm:space-y-10 sm:px-8 sm:py-10">
-          <section class="space-y-2">
-            <h2 class="font-label text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
-              Meaning
-            </h2>
-            <p class="font-headline text-2xl font-semibold leading-tight text-primary sm:text-3xl">
-              {{ meaning }}
-            </p>
-          </section>
+          <header class="relative flex-none overflow-hidden bg-[linear-gradient(135deg,#0b3d2e_0%,#2f1502_52%,#735c00_100%)] px-4 py-4 text-on-primary sm:px-8 sm:py-7">
+            <img
+              :src="textureImage"
+              alt=""
+              class="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.08] mix-blend-overlay"
+            />
+            <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,224,136,0.16),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(188,237,215,0.16),transparent_28%)]"></div>
 
-          <section class="relative pl-6">
-            <div class="absolute bottom-0 left-0 top-0 w-0.5 bg-tertiary-fixed-dim"></div>
-            <p class="font-body text-base italic leading-8 text-on-surface-variant sm:text-lg">
-              {{ story }}
-            </p>
-          </section>
+            <div class="relative z-10 flex items-start justify-between gap-4">
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="inline-flex items-center rounded-full border border-primary-fixed/20 bg-primary-fixed/10 px-3 py-1 font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-fixed">
+                  {{ primaryTag }}
+                </span>
+                <span class="inline-flex items-center gap-1 rounded-full border border-tertiary-fixed/20 bg-tertiary-fixed/10 px-3 py-1 font-label text-[11px] font-semibold uppercase tracking-[0.14em] text-primary-fixed">
+                  <span class="material-symbols-outlined text-[14px]">{{ genderIcon }}</span>
+                  {{ gender }}
+                </span>
+              </div>
 
-          <section class="rounded-xl border-l-4 border-tertiary-container bg-tertiary-container/10 p-5 sm:p-6">
-            <h2 class="mb-3 font-label text-xs font-semibold uppercase tracking-[0.18em] text-tertiary">
-              Related Proverb
-            </h2>
-            <blockquote class="font-headline text-xl font-medium italic leading-snug text-on-tertiary-container sm:text-2xl">
-              "{{ proverb }}"
-            </blockquote>
-          </section>
-        </div>
+              <button
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-tertiary-fixed/20 bg-white/10 text-white transition-colors hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tertiary-fixed"
+                type="button"
+                aria-label="Close name details"
+                @click="closeModal"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
 
-        <footer class="flex flex-none flex-col items-stretch gap-3 border-t border-outline-variant/20 bg-surface-container-low p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-6">
-          <button
-            class="flex h-12 w-12 shrink-0 items-center justify-center self-start rounded-xl bg-surface-container-high text-tertiary transition-colors hover:bg-tertiary-fixed"
-            type="button"
-            :aria-pressed="isFavorite"
-            aria-label="Toggle favorite"
-            @click="isFavorite = !isFavorite"
-          >
-            <span
-              :class="['material-symbols-outlined', { 'filled-symbol': isFavorite }]"
-            >
-              favorite
-            </span>
-          </button>
+            <div class="relative z-10 mt-6 sm:mt-8">
+              <h1 id="name-detail-title" class="max-w-full break-words font-display text-3xl font-bold leading-[0.96] text-white sm:text-5xl">
+                {{ displayName }}
+              </h1>
 
-          <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
-            <button
-              :class="[
-                'flex min-w-[144px] items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-on-primary transition-all sm:px-6',
-                isDownloading ? 'cursor-wait opacity-95 shadow-lg' : 'hover:shadow-lg',
-              ]"
-              type="button"
-              :disabled="isDownloading"
-              @click="downloadEntry"
-            >
-              <span
-                v-if="isDownloading"
-                class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
-                aria-hidden="true"
-              ></span>
-              <span v-else class="material-symbols-outlined text-[20px]">download</span>
-              <span class="font-label text-sm font-semibold tracking-[0.05em]">
-                {{ isDownloading ? 'Downloading...' : 'Download' }}
-              </span>
-            </button>
-            <button
-              class="flex items-center gap-2 rounded-full border border-outline/20 bg-outline/10 px-5 py-3 text-on-surface transition-colors hover:bg-outline/20 sm:px-6"
-              type="button"
-              @click="shareEntry"
-            >
-              <span class="material-symbols-outlined text-[20px]">{{ shareCopied ? 'check' : 'share' }}</span>
-              <span class="font-label text-sm font-semibold tracking-[0.05em]">{{ shareCopied ? 'Copied' : 'Share' }}</span>
-            </button>
+              <div class="mt-3 flex flex-wrap items-center gap-2 sm:mt-4 sm:gap-3">
+                <p v-if="pronunciation" class="font-headline text-sm italic text-primary-fixed sm:text-xl">
+                  {{ pronunciation }}
+                </p>
+                <button
+                  :class="[
+                    'inline-flex min-h-10 items-center gap-2 rounded-full border border-tertiary-fixed/20 bg-tertiary-fixed px-3 py-2 text-on-tertiary-fixed transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:px-4',
+                    isPlaying ? 'bg-white text-primary' : 'hover:bg-white/90',
+                  ]"
+                  type="button"
+                  :disabled="!modalAudioSrc"
+                  :aria-label="audioButtonLabel"
+                  :aria-busy="isLoadingAudio"
+                  :title="audioButtonTitle"
+                  @click.stop="toggleAudio"
+                >
+                  <span
+                    v-if="isLoadingAudio"
+                    class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    aria-hidden="true"
+                  ></span>
+                  <span v-else class="material-symbols-outlined text-[18px]">
+                    {{ hasAudioError ? 'volume_off' : isPlaying ? 'pause' : 'volume_up' }}
+                  </span>
+                  <span class="font-label text-sm font-semibold tracking-[0.05em]">
+                    {{ hasAudioError ? 'Unavailable' : isLoadingAudio ? 'Loading' : isPlaying ? 'Playing' : modalAudioSrc ? 'Listen' : 'No audio' }}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <div class="custom-scrollbar flex-1 overflow-y-auto bg-[linear-gradient(180deg,#f8f2e8_0%,#fcf9f4_100%)] px-4 py-5 sm:px-8 sm:py-8">
+            <div class="space-y-5 sm:space-y-6">
+              <section class="space-y-2">
+                <h2 class="font-label text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+                  Meaning
+                </h2>
+                <p class="font-headline text-xl font-semibold leading-snug text-primary sm:text-3xl">
+                  {{ meaning }}
+                </p>
+              </section>
+
+              <section class="relative pl-6">
+                <div class="absolute bottom-0 left-0 top-0 w-0.5 bg-secondary"></div>
+                <p class="font-body text-sm italic leading-7 text-on-surface-variant sm:text-lg sm:leading-8">
+                  {{ story }}
+                </p>
+              </section>
+
+              <section class="rounded-[1.2rem] border border-tertiary-container/30 bg-[linear-gradient(180deg,rgba(203,167,47,0.12)_0%,rgba(246,243,238,0.8)_100%)] p-4 sm:p-6">
+                <h2 class="mb-2 font-label text-xs font-semibold uppercase tracking-[0.18em] text-tertiary sm:mb-3">
+                  Related Proverb
+                </h2>
+                <blockquote class="font-headline text-lg font-medium italic leading-snug text-on-tertiary-container sm:text-2xl">
+                  "{{ proverb }}"
+                </blockquote>
+              </section>
+
+              <section class="mt-2 flex flex-col gap-3 border-t border-outline-variant/20 pt-5 sm:hidden">
+                <div class="flex items-center gap-3">
+                  <button
+                    class="flex h-11 w-11 items-center justify-center rounded-full border border-secondary/15 bg-surface-container-lowest text-secondary transition-colors hover:bg-secondary-fixed/20"
+                    type="button"
+                    :aria-pressed="isFavorite"
+                    aria-label="Like this entry"
+                    @click="isFavorite = !isFavorite"
+                  >
+                    <span :class="['material-symbols-outlined', { 'filled-symbol': isFavorite }]">favorite</span>
+                  </button>
+                  <button
+                    class="flex h-11 w-11 items-center justify-center rounded-full border border-tertiary/20 bg-surface-container-lowest text-tertiary transition-colors hover:bg-tertiary-fixed/20"
+                    type="button"
+                    :aria-pressed="isBookmarked"
+                    aria-label="Save this entry"
+                    @click="isBookmarked = !isBookmarked"
+                  >
+                    <span :class="['material-symbols-outlined', { 'filled-symbol': isBookmarked }]">bookmark</span>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <button
+                    :class="[
+                      'flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-on-primary transition-all',
+                      isDownloading ? 'cursor-wait opacity-95 shadow-lg' : 'hover:bg-primary-container hover:shadow-lg',
+                    ]"
+                    type="button"
+                    :disabled="isDownloading"
+                    @click="downloadEntry"
+                  >
+                    <span
+                      v-if="isDownloading"
+                      class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                      aria-hidden="true"
+                    ></span>
+                    <span v-else class="material-symbols-outlined text-[20px]">download</span>
+                    <span class="font-label text-sm font-semibold tracking-[0.05em]">
+                      {{ isDownloading ? 'Downloading...' : 'Download' }}
+                    </span>
+                  </button>
+
+                  <button
+                    class="flex items-center justify-center gap-2 rounded-full border border-outline/20 bg-outline/10 px-4 py-3 text-on-surface transition-colors hover:bg-surface-container"
+                    type="button"
+                    @click="shareEntry"
+                  >
+                    <span class="material-symbols-outlined text-[20px]">{{ shareCopied ? 'check' : 'share' }}</span>
+                    <span class="font-label text-sm font-semibold tracking-[0.05em]">{{ shareCopied ? 'Copied' : 'Share' }}</span>
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
-        </footer>
-      </article>
-    </div>
+
+          <footer class="hidden flex-none flex-col gap-4 border-t border-outline-variant/20 bg-surface-container-low px-4 py-4 sm:flex sm:px-6 sm:py-5">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="flex items-center gap-3">
+                <button
+                  class="flex h-11 w-11 items-center justify-center rounded-full border border-secondary/15 bg-surface-container-lowest text-secondary transition-colors hover:bg-secondary-fixed/20"
+                  type="button"
+                  :aria-pressed="isFavorite"
+                  aria-label="Like this entry"
+                  @click="isFavorite = !isFavorite"
+                >
+                  <span :class="['material-symbols-outlined', { 'filled-symbol': isFavorite }]">favorite</span>
+                </button>
+                <button
+                  class="flex h-11 w-11 items-center justify-center rounded-full border border-tertiary/20 bg-surface-container-lowest text-tertiary transition-colors hover:bg-tertiary-fixed/20"
+                  type="button"
+                  :aria-pressed="isBookmarked"
+                  aria-label="Save this entry"
+                  @click="isBookmarked = !isBookmarked"
+                >
+                  <span :class="['material-symbols-outlined', { 'filled-symbol': isBookmarked }]">bookmark</span>
+                </button>
+              </div>
+
+              <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+                <button
+                  :class="[
+                    'flex min-w-[144px] items-center justify-center gap-2 rounded-full bg-primary px-5 py-3 text-on-primary transition-all sm:px-6',
+                    isDownloading ? 'cursor-wait opacity-95 shadow-lg' : 'hover:bg-primary-container hover:shadow-lg',
+                  ]"
+                  type="button"
+                  :disabled="isDownloading"
+                  @click="downloadEntry"
+                >
+                  <span
+                    v-if="isDownloading"
+                    class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+                    aria-hidden="true"
+                  ></span>
+                  <span v-else class="material-symbols-outlined text-[20px]">download</span>
+                  <span class="font-label text-sm font-semibold tracking-[0.05em]">
+                    {{ isDownloading ? 'Downloading...' : 'Download' }}
+                  </span>
+                </button>
+
+                <button
+                  class="flex items-center gap-2 rounded-full border border-outline/20 bg-outline/10 px-5 py-3 text-on-surface transition-colors hover:bg-surface-container sm:px-6"
+                  type="button"
+                  @click="shareEntry"
+                >
+                  <span class="material-symbols-outlined text-[20px]">{{ shareCopied ? 'check' : 'share' }}</span>
+                  <span class="font-label text-sm font-semibold tracking-[0.05em]">{{ shareCopied ? 'Copied' : 'Share' }}</span>
+                </button>
+              </div>
+            </div>
+          </footer>
+        </article>
+      </div>
+    </Transition>
   </Teleport>
 </template>
 
-<style scoped>
+  <style scoped>
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(240, 237, 233, 0.9);
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #dcdad5;
-  border-radius: 10px;
+  background: #7c563b;
+  border-radius: 9999px;
+  border: 2px solid rgba(240, 237, 233, 0.9);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #7c563b rgba(240, 237, 233, 0.9);
 }
 
 .filled-symbol {
   font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.name-modal-enter-active,
+.name-modal-leave-active {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.name-modal-enter-from,
+.name-modal-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
 }
 </style>

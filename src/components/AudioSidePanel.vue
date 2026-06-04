@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { isSupabaseConfigured, requireSupabase, SUPABASE_CONFIG_MESSAGE } from '../services/supabase'
+import { getDisplayName } from '../composables/useTonalNames'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
 const props = defineProps({
@@ -10,6 +11,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'updated'])
 
 const normalizedEntry = computed(() => normalizeNameRecord(props.entry))
+const displayName = computed(() => getDisplayName(normalizedEntry.value))
 
 const audioFile = ref(null)
 const persistedAudioId = ref(normalizedEntry.value.audio_id || null)
@@ -464,7 +466,7 @@ watch(normalizedEntry, (entry) => {
     <aside class="relative z-10 flex h-full w-full max-w-[520px] flex-col bg-surface-container-lowest shadow-2xl animate-slide-in">
       <header class="flex items-center justify-between border-b border-outline-variant/30 px-6 py-5">
         <div class="min-w-0">
-          <h2 class="truncate font-display text-2xl font-bold text-primary">{{ normalizedEntry.name }}</h2>
+          <h2 class="truncate font-display text-2xl font-bold text-primary">{{ displayName }}</h2>
           <p class="mt-0.5 truncate font-body text-sm text-on-surface-variant italic">{{ normalizedEntry.meaning }}</p>
         </div>
         <button

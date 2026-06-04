@@ -33,7 +33,7 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const raw = readFileSync('./src/data/igala_names_structured.json', 'utf-8')
+const raw = readFileSync('./src/data/igala_names_with_tones.json', 'utf-8')
 const namesData = JSON.parse(raw)
 
 const optionalColumnMap = {
@@ -41,10 +41,17 @@ const optionalColumnMap = {
   description: (entry) => entry.story || entry.description || null,
   category: (entry) => entry.category || null,
   proverb: (entry) => entry.proverb || null,
+  tonal_name: (entry) => entry.tonal_name || null,
   audio_url: (entry) => entry.audioSrc || null,
   origin: (entry) => entry.category || null,
   origin_story_ai: (entry) => entry.story || entry.description || null,
   origin_story_final: (entry) => entry.story || entry.description || null,
+}
+
+function normalizeGender(value) {
+  if (value === '♂' || value === 'Male') return 'Male'
+  if (value === '♀' || value === 'Female') return 'Female'
+  return 'Unisex'
 }
 
 async function columnExists(column) {
@@ -70,7 +77,7 @@ function buildRows(existingColumns) {
     const row = {
       name: entry.name,
       meaning: (entry.meaning || '').replace(/^"|"$/g, ''),
-      gender: entry.gender || 'Unisex',
+      gender: normalizeGender(entry.gender),
       tags: Array.isArray(entry.tags) ? entry.tags : [],
     }
 

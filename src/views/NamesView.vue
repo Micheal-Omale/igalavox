@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import fallbackNames from '../data/igala_names_structured.json'
 import HeritageDivider from '../components/HeritageDivider.vue'
 import NameCard from '../components/NameCard.vue'
 import NameDetailModal from '../components/NameDetailModal.vue'
 import SearchPanel from '../components/SearchPanel.vue'
+import { searchArchiveNames } from '../composables/useNameArchive'
 import { isSupabaseConfigured, requireSupabase } from '../services/supabase'
 import { normalizeNameRecord } from '../utils/nameRecord'
 
@@ -21,9 +21,6 @@ const hasMoreNames = ref(false)
 const errorMessage = ref('')
 let searchTimer = null
 
-const SUMMARY_CACHE_KEY = 'names-view-summary-cache-v2'
-const SUMMARY_CACHE_TTL_MS = 5 * 60 * 1000
-const SUMMARY_SELECT = 'id, name, meaning, tags, gender, audio_id, audio_url, audio_files(file_url, file_name), updated_at'
 const PAGE_SIZE = 60
 
 const dedupeByName = (rows) => {
@@ -47,46 +44,9 @@ const dedupeByName = (rows) => {
   return [...byName.values()]
 }
 
-const readSummaryCache = () => {
-  const raw = sessionStorage.getItem(SUMMARY_CACHE_KEY)
-  if (!raw) return null
-
-  try {
-    const parsed = JSON.parse(raw)
-    if (Date.now() - parsed.savedAt > SUMMARY_CACHE_TTL_MS) return null
-    return parsed.rows || null
-  } catch {
-    return null
-  }
-}
-
-const writeSummaryCache = (rows) => {
-  sessionStorage.setItem(SUMMARY_CACHE_KEY, JSON.stringify({
-    savedAt: Date.now(),
-    rows,
-  }))
-}
-
 const visibleNames = computed(() => names.value)
 const hasActiveSearch = computed(() => Boolean(searchQuery.value.trim()))
 const shouldShowEmptyState = computed(() => !isLoading.value && visibleNames.value.length === 0)
-
-const buildNamesQuery = (from, to) => {
-  const q = searchQuery.value.trim()
-  const queryClient = requireSupabase()
-  let query = queryClient
-    .from('names')
-    .select(SUMMARY_SELECT)
-    .order('name', { ascending: true })
-    .range(from, to)
-
-  if (q) {
-    const escaped = q.replace(/[%_,]/g, '\\$&')
-    query = query.or(`name.ilike.%${escaped}%,meaning.ilike.%${escaped}%`)
-  }
-
-  return query
-}
 
 const fetchNames = async ({ reset = true } = {}) => {
   if (reset) isLoading.value = true
@@ -94,45 +54,14 @@ const fetchNames = async ({ reset = true } = {}) => {
   errorMessage.value = ''
 
   try {
-    if (!isSupabaseConfigured) {
-      hasMoreNames.value = false
-      names.value = fallbackNames
-        .filter((item) => {
-          const q = searchQuery.value.trim().toLowerCase()
-          if (!q) return true
-          return [item.name, item.meaning, item.story, item.category].some((value) => String(value || '').toLowerCase().includes(q))
-        })
-        .map(normalizeNameRecord)
-      return
-    }
-
-    const cachedRows = reset && !searchQuery.value.trim() ? readSummaryCache() : null
-    if (cachedRows) {
-      names.value = cachedRows.map(normalizeNameRecord)
-      hasMoreNames.value = cachedRows.length === PAGE_SIZE
-      isLoading.value = false
-      return
-    }
-
     const from = reset ? 0 : names.value.length
-    const to = from + PAGE_SIZE - 1
-    const { data, error } = await buildNamesQuery(from, to)
+    const { rows, total } = searchArchiveNames(searchQuery.value.trim(), { offset: from, limit: PAGE_SIZE })
 
-    if (error) throw error
-    const dedupedRows = dedupeByName(data || [])
-    const normalizedRows = dedupedRows.map(normalizeNameRecord)
-
-    if (reset) {
-      if (!searchQuery.value.trim()) writeSummaryCache(dedupedRows)
-      names.value = normalizedRows
-    } else {
-      names.value = dedupeByName([...names.value, ...normalizedRows]).map(normalizeNameRecord)
-    }
-
-    hasMoreNames.value = (data || []).length === PAGE_SIZE
+    names.value = reset ? rows : dedupeByName([...names.value, ...rows])
+    hasMoreNames.value = from + rows.length < total
   } catch (error) {
-    errorMessage.value = 'Unable to load archive from Supabase. Showing available fallback records.'
-    names.value = fallbackNames.map(normalizeNameRecord)
+    errorMessage.value = 'Unable to load archive records.'
+    names.value = []
     hasMoreNames.value = false
     console.error('Error fetching names:', error)
   } finally {
@@ -143,17 +72,21 @@ const fetchNames = async ({ reset = true } = {}) => {
 
 const openName = async (item) => {
   selectedName.value = item
-  if (!isSupabaseConfigured || !item.id) return
+  if (!isSupabaseConfigured) return
 
   isDetailLoading.value = true
 
   try {
     const supabase = requireSupabase()
-    const { data, error } = await supabase
+    let query = supabase
       .from('names')
       .select('*, audio_files(file_url, file_name)')
-      .eq('id', item.id)
-      .single()
+
+    query = item.id
+      ? query.eq('id', item.id)
+      : query.eq('name', item.name)
+
+    const { data, error } = await query.single()
 
     if (error) throw error
     selectedName.value = normalizeNameRecord(data)
@@ -207,9 +140,12 @@ watch(searchQuery, () => {
           <NameCard
             v-for="item in visibleNames"
             :key="item.id || item.name"
-            :name="item.name"
+            :name="item"
             :meaning="item.meaning"
+            :story="item.story"
             :tags="item.tags"
+            :gender="item.gender"
+            :gender-icon="item.gender === 'Male' ? 'male' : item.gender === 'Female' ? 'female' : 'person'"
             :audio-src="item.audioSrc"
             @select="openName(item)"
           />

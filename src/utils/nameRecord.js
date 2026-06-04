@@ -3,6 +3,7 @@ import enefolaAudio from '../assets/audio/Enefola.m4a'
 import enyojoAudio from '../assets/audio/EnyojoU.m4a'
 import ikojoAudio from '../assets/audio/IkojoU.m4a'
 import ojonugwaAudio from '../assets/audio/Ojonugwa.m4a'
+import { enhanceNameRecord } from './nameEnhancements'
 
 const bundledAudio = {
   'attah.m4a': attahAudio,
@@ -12,6 +13,23 @@ const bundledAudio = {
   'ojonugwa.m4a': ojonugwaAudio,
 }
 
+const bundledAudioByName = {
+  attah: attahAudio,
+  enefola: enefolaAudio,
+  enyojo: enyojoAudio,
+  enyoojo: enyojoAudio,
+  ikojo: ikojoAudio,
+  ojonugwa: ojonugwaAudio,
+}
+
+function normalizeKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+}
+
 function resolveAudioUrl(value) {
   if (!value) return null
   if (/^(https?:|blob:|data:|\/)/i.test(value)) return value
@@ -19,15 +37,22 @@ function resolveAudioUrl(value) {
   return bundledAudio[value.toLowerCase()] || value
 }
 
+function normalizeGender(value) {
+  if (value === '♂' || value === 'Male') return 'Male'
+  if (value === '♀' || value === 'Female') return 'Female'
+  return 'Unisex'
+}
+
 export function normalizeNameRecord(record = {}) {
   const audioUrl = resolveAudioUrl(record.audio_url || record.audio_files?.file_url || record.audioSrc)
+    || bundledAudioByName[normalizeKey(record.name)]
   const category = record.category || record.origin || ''
   const story = record.description || record.origin_story_final || record.origin_story_ai || ''
   const pronunciation = record.pronunciation || ''
   const proverb = record.proverb || ''
-  const gender = record.gender || 'Unisex'
+  const gender = normalizeGender(record.gender)
 
-  return {
+  return enhanceNameRecord({
     ...record,
     audioUrl,
     audioSrc: audioUrl,
@@ -40,7 +65,7 @@ export function normalizeNameRecord(record = {}) {
     gender,
     tags: Array.isArray(record.tags) ? record.tags : [],
     genderIcon: gender === 'Male' ? 'male' : gender === 'Female' ? 'female' : 'person',
-  }
+  })
 }
 
 export function toNameWritePayload(input = {}) {
